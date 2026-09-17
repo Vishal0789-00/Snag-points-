@@ -248,35 +248,98 @@ async function exportExcel(){
  if(!window.ExcelJS){alert("Excel export library could not be loaded. Check your internet connection and reload the page.");return}
  try{
   const wb=new ExcelJS.Workbook();
+  wb.creator="Snag Points";
+  wb.created=new Date();
   const ws=wb.addWorksheet("Snag Register");
   ws.columns=[
-   {header:"ID",key:"id",width:18},{header:"Floor",key:"floor",width:18},{header:"Location",key:"location",width:25},
-   {header:"Description",key:"description",width:55},{header:"Status",key:"status",width:16},{header:"Date",key:"date",width:20},
-   {header:"Image 1",key:"image1",width:16},{header:"Image 2",key:"image2",width:16},{header:"Image 3",key:"image3",width:16},
-   {header:"Image 4",key:"image4",width:16},{header:"Image 5",key:"image5",width:16}
+   {header:"ID",key:"id",width:18},
+   {header:"Floor",key:"floor",width:18},
+   {header:"Location",key:"location",width:25},
+   {header:"Description",key:"description",width:55},
+   {header:"Status",key:"status",width:16},
+   {header:"Date",key:"date",width:20},
+   {header:"Image 1",key:"image1",width:20},
+   {header:"Image 2",key:"image2",width:20},
+   {header:"Image 3",key:"image3",width:20},
+   {header:"Image 4",key:"image4",width:20},
+   {header:"Image 5",key:"image5",width:20}
   ];
   ws.getRow(1).font={bold:true};
+  ws.getRow(1).alignment={vertical:"middle",horizontal:"center"};
+  ws.getRow(1).height=24;
   ws.views=[{state:"frozen",ySplit:1}];
+  ws.autoFilter={from:"A1",to:"K1"};
+
+  function dataUrlParts(dataUrl){
+    const m=String(dataUrl||"").match(/^data:image\/(png|jpe?g);base64,(.+)$/i);
+    if(!m)return null;
+    let ext=m[1].toLowerCase();
+    if(ext==="jpg")ext="jpeg";
+    return {extension:ext, base64:dataUrl};
+  }
+
   const maxImages=5;
   for(const x of snags){
-    const row=ws.addRow({id:x.id,floor:x.floor,location:x.location,description:x.description,status:x.status,date:new Date(x.date).toLocaleString()});
-    row.height=90;
-    const images=Array.isArray(x.imageData)?x.imageData:(x.imageData?[x.imageData]:[]);
-    for(let i=0;i<Math.min(images.length,maxImages);i++){
-      const src=images[i]; if(!src)continue;
-      const m=src.match(/^data:image\/(png|jpe?g|gif|webp);base64,(.+)$/i);
-      if(!m)continue;
-      let ext=m[1].toLowerCase(); if(ext==="jpg")ext="jpeg";
-      if(!["png","jpeg","gif"].includes(ext))continue;
-      const imageId=wb.addImage({base64:src,extension:ext});
-      ws.addImage(imageId,{tl:{col:6+i,row:row.number-1},ext:{width:105,height:75}});
+    const row=ws.addRow({
+      id:x.id||"",
+      floor:x.floor||"",
+      location:x.location||"",
+      description:x.description||"",
+      status:x.status||"Open",
+      date:x.date?new Date(x.date).toLocaleString():""
+    });
+    row.height=105;
+    row.alignment={vertical:"top",wrapText:true};
+
+    let images=Array.isArray(x.imageData)?x.imageData:(x.imageData?[x.imageData]:[]);
+    images=images.filter(Boolean).slice(0,maxImages);
+
+    for(let i=0;i<images.length;i++){
+      const parts=dataUrlParts(images[i]);
+      if(!parts)continue;
+      try{
+        const imageId=wb.addImage({base64:parts.base64,extension:parts.extension});
+        // Place image OVER the actual Excel cell, with top-left and bottom-right
+        // anchored to that cell. This makes it visually behave like a pasted image
+        // in the corresponding Image N cell.
+        const col=6+i;
+        ws.addImage(imageId,{
+          tl:{col:col,row:row.number-1,offsetX:3,offsetY:3},
+          br:{col:col+1,row:row.number,offsetX:-3,offsetY:-3},
+          editAs:"oneCell"
+        });
+      }catch(imgErr){
+        console.warn("Could not embed image",i+1,imgErr);
+      }
     }
   }
-  ws.autoFilter={from:"A1",to:"K1"};
+
+  // Give image cells a centered alignment and light border.
+  for(let r=2;r<=ws.rowCount;r++){
+    for(let c=7;c<=11;c++){
+      const cell=ws.getCell(r,c);
+      cell.alignment={vertical:"middle",horizontal:"center"};
+      cell.border={
+        top:{style:"thin"},bottom:{style:"thin"},left:{style:"thin"},right:{style:"thin"}
+      };
+    }
+  }
+
   const buffer=await wb.xlsx.writeBuffer();
   const blob=new Blob([buffer],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="snag-register.xlsx";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
- }catch(e){console.error(e);alert("Excel export failed: "+e.message)}
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="snag-register-with-photos.xlsx";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+  alert("Excel exported with photos embedded in the Image cells. If your mobile viewer does not display them, open the same file in Microsoft Excel desktop/web.");
+ }catch(e){
+  console.error(e);
+  alert("Excel export failed: "+e.message);
+ }
 }
 render();
 </script>
