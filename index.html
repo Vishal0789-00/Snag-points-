@@ -206,7 +206,7 @@ function makeStyles(){
 }
 function makeSheet(rows,imageCellMap){
  const headers=["Sr.No","Location","Snag Point Type","Description","Status","Date","Image 1","Image 2","Image 3","Image 4","Image 5"];
- let xml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:K${rows.length+1}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols><col min="1" max="1" width="8"/><col min="2" max="2" width="38"/><col min="3" max="3" width="22"/><col min="4" max="4" width="42"/><col min="5" max="5" width="15"/><col min="6" max="6" width="20"/>`;
+ let xml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><dimension ref="A1:K${rows.length+1}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols><col min="1" max="1" width="8"/><col min="2" max="2" width="38"/><col min="3" max="3" width="22"/><col min="4" max="4" width="42"/><col min="5" max="5" width="15"/><col min="6" max="6" width="20"/>`;
  for(let c=7;c<=11;c++)xml+=`<col min="${c}" max="${c}" width="28"/>`;
  xml+=`</cols><sheetData><row r="1" ht="30" customHeight="1">`;
  headers.forEach((h,i)=>xml+=`<c r="${String.fromCharCode(65+i)}1" s="1" t="inlineStr"><is><t>${escXml(h)}</t></is></c>`);
@@ -233,7 +233,7 @@ function makeMetadata(imageCount){
  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:xlrd="http://schemas.microsoft.com/office/spreadsheetml/2017/richdata"><metadataTypes count="1"><metadataType name="XLRICHVALUE" minSupportedVersion="120000" copy="1" pasteAll="1" pasteValues="1" merge="1" splitFirst="1" rowColShift="1" clearFormats="1" clearComments="1" assign="1" coerce="1"/></metadataTypes><futureMetadata name="XLRICHVALUE" count="${imageCount}">${future}</futureMetadata><valueMetadata count="${imageCount}">${values}</valueMetadata></metadata>`;
 }
 function makeRichValueTypes(){
- return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><rvTypes xmlns="http://schemas.microsoft.com/office/spreadsheetml/2017/richdata"><rvType name="_localImage" type="0"/></rvTypes>`;
+ return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><rvTypesInfo xmlns="http://schemas.microsoft.com/office/spreadsheetml/2017/richdata2" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x" xmlns:x="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><global><keyFlags><key name="_Self"><flag name="ExcludeFromFile" value="1"/><flag name="ExcludeFromCalcComparison" value="1"/></key><key name="_DisplayString"><flag name="ExcludeFromCalcComparison" value="1"/></key><key name="_Flags"><flag name="ExcludeFromCalcComparison" value="1"/></key><key name="_Format"><flag name="ExcludeFromCalcComparison" value="1"/></key><key name="_SubLabel"><flag name="ExcludeFromCalcComparison" value="1"/></key><key name="_Attribution"><flag name="ExcludeFromCalcComparison" value="1"/></key><key name="_Icon"><flag name="ExcludeFromCalcComparison" value="1"/></key><key name="_Display"><flag name="ExcludeFromCalcComparison" value="1"/></key><key name="_CanonicalPropertyNames"><flag name="ExcludeFromCalcComparison" value="1"/></key><key name="_ClassificationId"><flag name="ExcludeFromCalcComparison" value="1"/></key></keyFlags></global></rvTypesInfo>`;
 }
 function makeRichValueStructure(){
  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><rvStructures xmlns="http://schemas.microsoft.com/office/spreadsheetml/2017/richdata" count="1"><s t="_localImage"><k n="_rvRel:LocalImageIdentifier" t="i"/><k n="CalcOrigin" t="i"/></s></rvStructures>`;
@@ -246,7 +246,7 @@ function makeRichValueData(imageCount){
 function makeRichValueRel(imageCount){
  let rows="";
  for(let i=0;i<imageCount;i++)rows+=`<rel r:id="rId${i+1}"/>`;
- return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><richValueRels xmlns="http://schemas.microsoft.com/office/2022/10/richvaluerel" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${rows}</richValueRels>`;
+ return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><richValueRels xmlns="http://schemas.microsoft.com/office/2022/richvaluerel" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${rows}</richValueRels>`;
 }
 function makeRichValueRelRels(imageInfos){
  let rows="";
