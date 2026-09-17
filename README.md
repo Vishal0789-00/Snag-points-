@@ -29,3 +29,23 @@ The ZIP is processed in the browser; it is not sent to a server by this app.
 ## Important storage note
 
 This first standalone version stores snag records and photo data in the browser's localStorage. Very large photo collections can exceed browser storage limits. For a large historical register, the next production step should move photos to IndexedDB or Supabase Storage while keeping only metadata locally.
+
+
+## WhatsApp import behavior
+
+- The complete WhatsApp message text is placed into **Description** for the corresponding image group.
+- Floor and Location are **not automatically extracted** from the message; you can enter them during Review.
+- If one message has multiple exported images and the ZIP/chat export allows the filenames to be associated, those images are kept in one snag entry as Image 1, Image 2, Image 3, etc.
+- Excel export now creates an `.xlsx` workbook with actual embedded images (for supported JPG/PNG/GIF photos), rather than only listing filenames.
+- On a phone, Excel/Sheets preview apps may not render embedded images exactly like desktop Microsoft Excel. If images appear missing on mobile, open the `.xlsx` in Microsoft Excel desktop/web first to verify.
+
+
+### Tested against the supplied WhatsApp export
+
+The importer now handles the export pattern where WhatsApp writes:
+
+- `IMG-....jpg (file attached)` on the timestamped message line
+- the user's actual caption/message on the following line(s)
+- several consecutive image-only attachment lines followed by one caption
+
+In the last case, the consecutive images are grouped into **one snag entry** and the following caption becomes that entry's Description. The generated image filename and `(file attached)` marker are not put into Description.
