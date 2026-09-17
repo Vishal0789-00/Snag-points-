@@ -96,7 +96,7 @@ async function addManual(){
  const floor=document.getElementById("floor").value.trim(), loc=document.getElementById("location").value.trim(), desc=document.getElementById("description").value.trim(), f=document.getElementById("photo").files[0];
  if(!floor||!loc||!desc||!f){alert("Please enter Floor, Location, Description and a photo.");return}
  if(f.size>8*1024*1024){alert("Photo must be 8 MB or smaller.");return}
- snags.unshift({id:nextId(),floor,location:loc,description:desc,status:"Open",date:new Date().toISOString(),imageName:f.name,imageData:await fileToDataURL(f)});
+ snags.unshift({id:nextId(),floor,location:loc,description:desc,type:"",status:"Open",date:new Date().toISOString(),imageName:f.name,imageData:[await fileToDataURL(f)]});
  persist();clearForm();
 }
 function clearForm(){["floor","location","description"].forEach(id=>document.getElementById(id).value="");document.getElementById("photo").value="";document.getElementById("photoPreview").style.display="none"}
@@ -152,29 +152,42 @@ function messageCaption(m){
 }
 function sameSenderTime(a,b){return a && b && a.sender===b.sender && a.date===b.date && a.time===b.time}
 function buildWhatsAppGroups(msgs,imageNames){
- const nameSet=new Map(imageNames.map(n=>[baseName(n).toLowerCase(),n]));
+ const nameMap=new Map(imageNames.map(n=>[baseName(n).toLowerCase(),n]));
  const groups=[], pending=[];
- for(let i=0;i<msgs.length;i++){
-   const m=msgs[i], filename=attachmentFilename(m.text);
+ for(const m of msgs){
+   const filename=attachmentFilename(m.text);
    if(!filename) continue;
-   const actual=nameSet.get(filename.toLowerCase()) || imageNames.find(n=>baseName(n).toLowerCase()===filename.toLowerCase());
+   const actual=nameMap.get(filename.toLowerCase()) || imageNames.find(n=>baseName(n).toLowerCase()===filename.toLowerCase());
    if(!actual) continue;
 
    const caption=messageCaption(m);
    if(caption){
-     // If there are immediately preceding image-only messages from the same
-     // sender/time, WhatsApp's export is representing one multi-photo message.
-     const imgs=pending.filter(x=>sameSenderTime(x.msg,m)).map(x=>x.image);
-     pending.length=0;
-     imgs.push(actual);
-     groups.push({msg:m,images:[...new Set(imgs)],caption,confidence:imgs.length>1?"Grouped multi-image message":"Caption match"});
-   } else {
-     // Hold image-only attachment until a captioned attachment arrives.
+     // WhatsApp may export several consecutive image-only messages at the same
+     // timestamp and put the human caption on the final image message.
+     // Group all immediately preceding image-only messages from the same sender/time.
+     const previous=[];
+     while(pending.length){
+       const last=pending[pending.length-1];
+       if(last.msg.sender===m.sender && last.msg.date===m.date && last.msg.time===m.time) previous.unshift(pending.pop());
+       else break;
+     }
+     const images=previous.map(x=>x.image);
+     images.push(actual);
+     groups.push({
+       msg:m,
+       images:[...new Set(images)],
+       caption,
+       confidence:images.length>1?"Grouped multi-image message":"Caption match"
+     });
+   }else{
      pending.push({msg:m,image:actual});
    }
  }
- // Any image-only messages left over become their own entries.
- for(const x of pending) groups.push({msg:x.msg,images:[x.image],caption:"",confidence:"Image without caption"});
+ // Any image-only messages that were not followed by a caption become their own
+ // entries; importantly, no photo is silently discarded.
+ for(const x of pending){
+   groups.push({msg:x.msg,images:[x.image],caption:"",confidence:"Image without caption"});
+ }
  return groups;
 }
 function dataURLFromBlob(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(blob)})}
@@ -245,83 +258,97 @@ function importReviewed(){
 }
 async function exportExcel(){
  if(!snags.length){alert("No snags to export.");return}
- if(!window.ExcelJS){alert("Excel export library could not be loaded. Check your internet connection and reload the page.");return}
+ if(!window.ExcelJS){alert("Excel export library could not be loaded. Please check internet and reload.");return}
  try{
   const wb=new ExcelJS.Workbook();
   wb.creator="Snag Points";
-  wb.created=new Date();
   const ws=wb.addWorksheet("Snag Register");
+
+  // Photo-register layout: each snag = one row, each photo = its own cell.
   ws.columns=[
-   {header:"ID",key:"id",width:18},
-   {header:"Floor",key:"floor",width:18},
-   {header:"Location",key:"location",width:25},
-   {header:"Description",key:"description",width:55},
-   {header:"Status",key:"status",width:16},
+   {header:"Sr.No",key:"sr",width:8},
+   {header:"Location",key:"location",width:38},
+   {header:"Snag Point Type",key:"type",width:22},
+   {header:"Description",key:"description",width:42},
+   {header:"Status",key:"status",width:15},
    {header:"Date",key:"date",width:20},
-   {header:"Image 1",key:"image1",width:20},
-   {header:"Image 2",key:"image2",width:20},
-   {header:"Image 3",key:"image3",width:20},
-   {header:"Image 4",key:"image4",width:20},
-   {header:"Image 5",key:"image5",width:20}
+   {header:"Image 1",key:"image1",width:23},
+   {header:"Image 2",key:"image2",width:23},
+   {header:"Image 3",key:"image3",width:23},
+   {header:"Image 4",key:"image4",width:23},
+   {header:"Image 5",key:"image5",width:23}
   ];
-  ws.getRow(1).font={bold:true};
-  ws.getRow(1).alignment={vertical:"middle",horizontal:"center"};
-  ws.getRow(1).height=24;
+
+  const header=ws.getRow(1);
+  header.height=30;
+  header.font={bold:true,size:12};
+  header.alignment={vertical:"middle",horizontal:"center",wrapText:true};
+  header.eachCell(cell=>{
+    cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFD9E8F5"}};
+    cell.border={top:{style:"thin"},bottom:{style:"thin"},left:{style:"thin"},right:{style:"thin"}};
+  });
   ws.views=[{state:"frozen",ySplit:1}];
   ws.autoFilter={from:"A1",to:"K1"};
 
-  function dataUrlParts(dataUrl){
-    const m=String(dataUrl||"").match(/^data:image\/(png|jpe?g);base64,(.+)$/i);
+  function getImages(x){
+    if(Array.isArray(x.imageData)) return x.imageData.filter(Boolean);
+    return x.imageData?[x.imageData]:[];
+  }
+  function getType(x){
+    // Keep a useful type if manually supplied; otherwise use a neutral value.
+    return x.type || x.snagPointType || "";
+  }
+  function parseImage(data){
+    const m=String(data||"").match(/^data:image\/(png|jpe?g);base64,(.+)$/i);
     if(!m)return null;
     let ext=m[1].toLowerCase();
     if(ext==="jpg")ext="jpeg";
-    return {extension:ext, base64:dataUrl};
+    return {base64:data,extension:ext};
   }
 
-  const maxImages=5;
-  for(const x of snags){
+  snags.slice().reverse().forEach((x,index)=>{
+    const imgs=getImages(x);
     const row=ws.addRow({
-      id:x.id||"",
-      floor:x.floor||"",
+      sr:index+1,
       location:x.location||"",
+      type:getType(x),
       description:x.description||"",
       status:x.status||"Open",
       date:x.date?new Date(x.date).toLocaleString():""
     });
-    row.height=105;
-    row.alignment={vertical:"top",wrapText:true};
 
-    let images=Array.isArray(x.imageData)?x.imageData:(x.imageData?[x.imageData]:[]);
-    images=images.filter(Boolean).slice(0,maxImages);
+    // Tall row so the image is genuinely visible, like a pasted photograph.
+    row.height=120;
+    for(let c=1;c<=11;c++){
+      const cell=ws.getCell(row.number,c);
+      cell.alignment={vertical:"middle",horizontal:"center",wrapText:true};
+      cell.border={top:{style:"thin"},bottom:{style:"thin"},left:{style:"thin"},right:{style:"thin"}};
+    }
+    ws.getCell(row.number,2).alignment={vertical:"middle",horizontal:"left",wrapText:true};
+    ws.getCell(row.number,4).alignment={vertical:"middle",horizontal:"left",wrapText:true};
 
-    for(let i=0;i<images.length;i++){
-      const parts=dataUrlParts(images[i]);
-      if(!parts)continue;
+    // Image is anchored to the full cell area, with small margins.
+    imgs.slice(0,5).forEach((data,i)=>{
+      const parts=parseImage(data);
+      if(!parts)return;
       try{
         const imageId=wb.addImage({base64:parts.base64,extension:parts.extension});
-        // Place image OVER the actual Excel cell, with top-left and bottom-right
-        // anchored to that cell. This makes it visually behave like a pasted image
-        // in the corresponding Image N cell.
-        const col=6+i;
+        const col=6+i; // G=6 zero-based, i.e. Image 1
         ws.addImage(imageId,{
-          tl:{col:col,row:row.number-1,offsetX:3,offsetY:3},
+          tl:{col,row:row.number-1,offsetX:3,offsetY:3},
           br:{col:col+1,row:row.number,offsetX:-3,offsetY:-3},
           editAs:"oneCell"
         });
-      }catch(imgErr){
-        console.warn("Could not embed image",i+1,imgErr);
-      }
-    }
-  }
+      }catch(err){console.warn("Image embed failed",err)}
+    });
+  });
 
-  // Give image cells a centered alignment and light border.
+  // Give image columns a consistent background/border even where no photo exists.
   for(let r=2;r<=ws.rowCount;r++){
     for(let c=7;c<=11;c++){
       const cell=ws.getCell(r,c);
       cell.alignment={vertical:"middle",horizontal:"center"};
-      cell.border={
-        top:{style:"thin"},bottom:{style:"thin"},left:{style:"thin"},right:{style:"thin"}
-      };
+      cell.border={top:{style:"thin"},bottom:{style:"thin"},left:{style:"thin"},right:{style:"thin"}};
     }
   }
 
@@ -330,12 +357,11 @@ async function exportExcel(){
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");
   a.href=url;
-  a.download="snag-register-with-photos.xlsx";
+  a.download="snag-register-photo-register.xlsx";
   document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),3000);
-  alert("Excel exported with photos embedded in the Image cells. If your mobile viewer does not display them, open the same file in Microsoft Excel desktop/web.");
  }catch(e){
   console.error(e);
   alert("Excel export failed: "+e.message);
