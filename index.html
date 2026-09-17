@@ -7,19 +7,126 @@
 @media(max-width:900px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.wrap{padding:12px}.row{grid-template-columns:1fr}.top{padding:12px}.card{padding:14px}.reviewrow{grid-template-columns:60px 1fr}.reviewrow>*:not(img){grid-column:2}.reviewrow img{grid-row:1 / span 4}}
 </style></head><body>
 <header><div class="top"><div><h1>🏗️ Snag Points</h1><div class="sub">Standalone snag register + WhatsApp ZIP importer</div></div><button class="btn secondary" onclick="exportExcel()">Export Excel</button></div></header>
-<main class="wrap"><div class="grid"><section class="card"><h2>➕ Add Snag</h2><div class="row"><div><label>Floor</label><input id="floor" placeholder="e.g. 5th Floor"></div><div><label>Location</label><input id="location" placeholder="e.g. LWR Passage Wall"></div></div><label>Description</label><textarea id="description" placeholder="Describe the snag..."></textarea><label>Photo</label><input id="photo" type="file" accept="image/*"><div class="preview" id="photoPreview"><img id="previewImg"></div><div class="actions"><button class="btn" onclick="addManual()">Save Snag</button><button class="btn secondary" onclick="clearForm()">Clear</button></div><hr style="border:0;border-top:1px solid var(--line);margin:20px 0"><h2>📦 Import WhatsApp ZIP</h2><div class="small">Choose the ZIP produced by WhatsApp Export Chat. The ZIP is processed locally in this browser.</div><label>ZIP file</label><input id="zipFile" type="file" accept=".zip,application/zip"><div class="actions"><button class="btn" onclick="loadWhatsAppZip()">Read ZIP & Review</button></div><div class="notice">No Excel or WhatsApp library is required. The ZIP reader and Excel writer are built into this page, so the export works without relying on a CDN.</div></section>
+<main class="wrap"><div class="grid"><section class="card"><h2>➕ Add Snag</h2><div class="row"><div><label>Floor</label><input id="floor" placeholder="e.g. 5th Floor"></div><div><label>Location</label><input id="location" placeholder="e.g. LWR Passage Wall"></div></div><label>Description</label><textarea id="description" placeholder="Describe the snag..."></textarea><label>Photo</label><input id="photo" type="file" accept="image/*"><div class="preview" id="photoPreview"><img id="previewImg"></div><div class="actions"><button class="btn" onclick="addManual()">Save Snag</button><button class="btn secondary" onclick="clearForm()">Clear</button></div><hr style="border:0;border-top:1px solid var(--line);margin:20px 0"><h2>📦 Import WhatsApp ZIP</h2><div class="small">Choose the ZIP produced by WhatsApp Export Chat. The ZIP is processed locally in this browser.</div><label>ZIP file</label><input id="zipFile" type="file" accept=".zip,application/zip"><div class="actions"><button class="btn" onclick="loadWhatsAppZip()">Read ZIP & Review</button></div><div class="notice">Large WhatsApp imports use IndexedDB instead of localStorage. The ZIP is processed in this browser and photos are saved in browser storage.</div></section>
 <section><div class="stats"><div class="stat"><b id="countAll">0</b><span>Total</span></div><div class="stat"><b id="countOpen">0</b><span>Open</span></div><div class="stat"><b id="countProgress">0</b><span>In Progress</span></div><div class="stat"><b id="countClosed">0</b><span>Closed</span></div></div><div class="card"><div class="toolbar"><input id="search" placeholder="Search floor, location, description..." oninput="render()"><select id="statusFilter" onchange="render()"><option value="">All status</option><option>Open</option><option>In Progress</option><option>Closed</option></select><button class="btn secondary" onclick="clearFilters()">Clear</button></div><div class="tablewrap"><table><thead><tr><th>Photo</th><th>ID</th><th>Floor</th><th>Location</th><th>Description</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="snagBody"></tbody></table></div></div></section></div></main>
 <div class="modal" id="reviewModal"><div class="modalbox"><div class="modalhead"><div><h2>WhatsApp Import Review</h2><div class="small" id="reviewSummary"></div></div><button class="btn secondary" onclick="closeReview()">Close</button></div><div class="notice">Each snag entry is one row. The user's actual WhatsApp message is copied to Description. Multiple photos attached to the same message are kept in the same entry as Image 1, Image 2, etc. Floor and Location are not guessed.</div><div id="reviewList"></div><div class="actions"><button class="btn" onclick="importReviewed()">Import Selected</button><button class="btn secondary" onclick="selectAllReview(true)">Select All</button><button class="btn secondary" onclick="selectAllReview(false)">Select None</button></div></div></div>
 <div class="modal" id="imageModal"><div class="modalbox" style="max-width:850px;text-align:center"><div class="modalhead"><h2>Photo</h2><button class="btn secondary" onclick="document.getElementById('imageModal').classList.remove('show')">Close</button></div><img id="bigImage" style="max-width:100%;max-height:75vh;object-fit:contain"></div></div>
 <script>
-const KEY="standaloneSnags_v2";let snags=loadSnags(),reviewItems=[];
-function loadSnags(){try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){return[]}}function persist(){localStorage.setItem(KEY,JSON.stringify(snags));render()}function nextId(){return "SN-"+new Date().toISOString().slice(0,10).replaceAll("-","")+"-"+String(snags.length+1).padStart(3,"0")}function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
+const DB_NAME="SnagPointsDB_v1",DB_STORE="snags";
+let snags=[],reviewItems=[],db=null;
+
+function openDB(){
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open(DB_NAME,1);
+  req.onupgradeneeded=()=>{
+   const d=req.result;
+   if(!d.objectStoreNames.contains(DB_STORE)) d.createObjectStore(DB_STORE,{keyPath:"id"});
+  };
+  req.onsuccess=()=>resolve(req.result);
+  req.onerror=()=>reject(req.error||new Error("IndexedDB could not be opened"));
+ });
+}
+function dbGetAll(){
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction(DB_STORE,"readonly"),req=tx.objectStore(DB_STORE).getAll();
+  req.onsuccess=()=>resolve(req.result||[]);
+  req.onerror=()=>reject(req.error||new Error("Could not read stored snags"));
+ });
+}
+function dbPut(item){
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction(DB_STORE,"readwrite");
+  tx.objectStore(DB_STORE).put(item);
+  tx.oncomplete=resolve;
+  tx.onerror=()=>reject(tx.error||new Error("Could not save snag"));
+  tx.onabort=()=>reject(tx.error||new Error("Could not save snag"));
+ });
+}
+function dbPutMany(items){
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction(DB_STORE,"readwrite"),store=tx.objectStore(DB_STORE);
+  items.forEach(item=>store.put(item));
+  tx.oncomplete=resolve;
+  tx.onerror=()=>reject(tx.error||new Error("Could not save import"));
+  tx.onabort=()=>reject(tx.error||new Error("Could not save import"));
+ });
+}
+function dbDelete(id){
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction(DB_STORE,"readwrite");
+  tx.objectStore(DB_STORE).delete(id);
+  tx.oncomplete=resolve;
+  tx.onerror=()=>reject(tx.error||new Error("Could not delete snag"));
+ });
+}
+async function initStorage(){
+ db=await openDB();
+ snags=await dbGetAll();
+ // One-time migration of records made by the previous localStorage version.
+ try{
+  const old=JSON.parse(localStorage.getItem("standaloneSnags_v2")||"[]");
+  if(old.length && !snags.length){
+   await dbPutMany(old);
+   snags=old;
+   localStorage.removeItem("standaloneSnags_v2");
+  }
+ }catch(e){ console.warn("Old localStorage migration skipped",e); }
+ render();
+}
+function nextId(){
+ return "SN-"+new Date().toISOString().slice(0,10).replaceAll("-","")+"-"+String(snags.length+1).padStart(3,"0");
+}
+function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
 function fileToDataURL(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
 document.getElementById("photo").addEventListener("change",e=>{const f=e.target.files[0],p=document.getElementById("photoPreview");if(!f){p.style.display="none";return}const r=new FileReader();r.onload=()=>{document.getElementById("previewImg").src=r.result;p.style.display="block"};r.readAsDataURL(f)});
-async function addManual(){const floor=document.getElementById("floor").value.trim(),loc=document.getElementById("location").value.trim(),desc=document.getElementById("description").value.trim(),f=document.getElementById("photo").files[0];if(!floor||!loc||!desc||!f){alert("Please enter Floor, Location, Description and a photo.");return}if(f.size>8*1024*1024){alert("Photo must be 8 MB or smaller.");return}snags.unshift({id:nextId(),floor,location:loc,description:desc,type:"",status:"Open",date:new Date().toISOString(),imageName:f.name,imageData:[await fileToDataURL(f)]});try{persist();clearForm()}catch(e){alert("Browser storage is full. For a large archive, photos should be moved to IndexedDB/Supabase Storage.")}}
+async function addManual(){
+ const floor=document.getElementById("floor").value.trim();
+ const loc=document.getElementById("location").value.trim();
+ const desc=document.getElementById("description").value.trim();
+ const f=document.getElementById("photo").files[0];
+ if(!floor||!loc||!desc||!f){alert("Please enter Floor, Location, Description and a photo.");return}
+ if(f.size>8*1024*1024){alert("Photo must be 8 MB or smaller.");return}
+ const item={
+  id:nextId(),floor,location:loc,description:desc,type:"",
+  status:"Open",date:new Date().toISOString(),imageName:f.name,
+  imageData:[await fileToDataURL(f)]
+ };
+ try{
+  await dbPut(item);
+  snags.unshift(item);
+  render();
+  clearForm();
+ }catch(e){
+  console.error(e);
+  alert("Could not save this snag. Browser storage may be unavailable or full.");
+ }
+}
 function clearForm(){["floor","location","description"].forEach(id=>document.getElementById(id).value="");document.getElementById("photo").value="";document.getElementById("photoPreview").style.display="none"}
 function render(){const q=document.getElementById("search").value.toLowerCase(),sf=document.getElementById("statusFilter").value;const list=snags.filter(x=>(!sf||x.status===sf)&&(!q||[x.id,x.floor,x.location,x.description].join(" ").toLowerCase().includes(q)));document.getElementById("snagBody").innerHTML=list.length?list.map(x=>{const arr=Array.isArray(x.imageData)?x.imageData:(x.imageData?[x.imageData]:[]);return `<tr><td><div style="display:flex;gap:4px;flex-wrap:wrap">${arr.slice(0,3).map((src,j)=>`<img class="thumb" src="${src}" title="Image ${j+1}" onclick="showImage('${x.id}',${j})">`).join("")||"—"}</div></td><td><b>${escapeHtml(x.id)}</b></td><td>${escapeHtml(x.floor)}</td><td>${escapeHtml(x.location)}</td><td>${escapeHtml(x.description)}</td><td><select onchange="changeStatus('${x.id}',this.value)"><option ${x.status==="Open"?"selected":""}>Open</option><option ${x.status==="In Progress"?"selected":""}>In Progress</option><option ${x.status==="Closed"?"selected":""}>Closed</option></select></td><td>${x.date?new Date(x.date).toLocaleDateString():""}</td><td><button class="btn danger" onclick="deleteSnag('${x.id}')">Delete</button></td></tr>`}).join(""):`<tr><td colspan="8" class="empty">No snag points yet.</td></tr>`;document.getElementById("countAll").textContent=snags.length;document.getElementById("countOpen").textContent=snags.filter(x=>x.status==="Open").length;document.getElementById("countProgress").textContent=snags.filter(x=>x.status==="In Progress").length;document.getElementById("countClosed").textContent=snags.filter(x=>x.status==="Closed").length}
-function changeStatus(id,s){const x=snags.find(a=>a.id===id);if(x){x.status=s;persist()}}function deleteSnag(id){if(confirm("Delete this snag?")){snags=snags.filter(x=>x.id!==id);persist()}}function showImage(id,j=0){const x=snags.find(a=>a.id===id),arr=Array.isArray(x?.imageData)?x.imageData:(x?.imageData?[x.imageData]:[]);if(arr[j]){document.getElementById("bigImage").src=arr[j];document.getElementById("imageModal").classList.add("show")}}function clearFilters(){document.getElementById("search").value="";document.getElementById("statusFilter").value="";render()}
+async function changeStatus(id,s){
+ const x=snags.find(a=>a.id===id);
+ if(!x)return;
+ x.status=s;
+ try{await dbPut(x);render()}
+ catch(e){console.error(e);alert("Could not save status change.")}
+}
+async function deleteSnag(id){
+ if(!confirm("Delete this snag?"))return;
+ try{
+  await dbDelete(id);
+  snags=snags.filter(x=>x.id!==id);
+  render();
+ }catch(e){console.error(e);alert("Could not delete the snag.")}
+}
+function showImage(id,j=0){
+ const x=snags.find(a=>a.id===id);
+ const arr=Array.isArray(x?.imageData)?x.imageData:(x?.imageData?[x.imageData]:[]);
+ if(arr[j]){
+  document.getElementById("bigImage").src=arr[j];
+  document.getElementById("imageModal").classList.add("show");
+ }
+}
+function clearFilters(){document.getElementById("search").value="";document.getElementById("statusFilter").value="";render()}
 
 // ---------- Minimal ZIP reader (stored + deflate) ----------
 function u16(a,p){return a[p]|(a[p+1]<<8)}function u32(a,p){return (a[p]|(a[p+1]<<8)|(a[p+2]<<16)|(a[p+3]<<24))>>>0}
@@ -31,8 +138,40 @@ function imageExt(n){return /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(n)}fun
 function buildWhatsAppGroups(msgs,imageNames){const map=new Map(imageNames.map(n=>[baseName(n).toLowerCase(),n])),groups=[],pending=[];for(const m of msgs){const fn=attachmentFilename(m.text);if(!fn)continue;const actual=map.get(fn.toLowerCase());if(!actual)continue;const cap=String(m.caption||"").trim();if(cap){const prior=pending.filter(x=>sameSenderTime(x.msg,m)).map(x=>x.image);for(let i=pending.length-1;i>=0;i--)if(sameSenderTime(pending[i].msg,m))pending.splice(i,1);prior.push(actual);groups.push({msg:m,images:[...new Set(prior)],caption:cap,confidence:prior.length>1?"Grouped multi-image message":"Caption match"})}else pending.push({msg:m,image:actual})}for(const x of pending)groups.push({msg:x.msg,images:[x.image],caption:"",confidence:"Image without caption"});return groups}
 async function loadWhatsAppZip(){const file=document.getElementById("zipFile").files[0];if(!file){alert("Select the WhatsApp ZIP first.");return}try{const entries=await unzipEntries(file),txtEntry=entries.find(x=>/\.txt$/i.test(x.name)&&/(chat|_chat|wa)/i.test(x.name))||entries.find(x=>/\.txt$/i.test(x.name));if(!txtEntry)throw new Error("No chat .txt file found inside the ZIP.");const msgs=parseWhatsApp(bytesToText(txtEntry.data)),imgs=entries.filter(x=>imageExt(x.name)),dataMap={};for(const z of imgs){let mime="image/jpeg";if(/\.png$/i.test(z.name))mime="image/png";else if(/\.gif$/i.test(z.name))mime="image/gif";else if(/\.webp$/i.test(z.name))mime="image/webp";dataMap[z.name]=bytesToDataURL(z.data,mime)}const groups=buildWhatsAppGroups(msgs,imgs.map(x=>x.name)),matched=new Set(groups.flatMap(g=>g.images));for(const z of imgs)if(!matched.has(z.name))groups.push({msg:null,images:[z.name],caption:"",confidence:"Image not matched to a chat message"});reviewItems=groups.map(g=>({selected:true,imageNames:g.images,imageData:g.images.map(n=>dataMap[n]).filter(Boolean),floor:"",location:"",description:g.caption||"",status:"Open",confidence:g.confidence,sender:g.msg?.sender||"",messageDate:g.msg?.date||"",messageTime:g.msg?.time||""}));if(!reviewItems.length){alert("No image files were found in the ZIP.");return}document.getElementById("reviewSummary").textContent=`Found ${imgs.length} image(s), ${msgs.length} message(s), and ${reviewItems.length} snag group(s).`;renderReview();document.getElementById("reviewModal").classList.add("show")}catch(e){console.error(e);alert("Could not read the WhatsApp ZIP: "+e.message)}}
 function renderReview(){document.getElementById("reviewList").innerHTML=reviewItems.map((x,i)=>`<div class="reviewrow"><div style="display:flex;gap:5px;flex-wrap:wrap">${x.imageData.map((src,j)=>`<img src="${src}" title="Image ${j+1}" onclick="showReviewImage(${i},${j})">`).join("")}</div><div><label><input type="checkbox" ${x.selected?"checked":""} onchange="reviewItems[${i}].selected=this.checked"> Select</label><div class="small">${x.imageData.length} image(s)<br>${escapeHtml(x.sender)} ${escapeHtml(x.messageDate)} ${escapeHtml(x.messageTime)}<br>${escapeHtml(x.confidence)}</div></div><div><label>Floor (optional)</label><input value="${escapeHtml(x.floor)}" onchange="reviewItems[${i}].floor=this.value"></div><div><label>Location (optional)</label><input value="${escapeHtml(x.location)}" onchange="reviewItems[${i}].location=this.value"><label>Description — WhatsApp message</label><textarea onchange="reviewItems[${i}].description=this.value">${escapeHtml(x.description)}</textarea></div><div><label>Status</label><select onchange="reviewItems[${i}].status=this.value"><option ${x.status==="Open"?"selected":""}>Open</option><option ${x.status==="In Progress"?"selected":""}>In Progress</option><option ${x.status==="Closed"?"selected":""}>Closed</option></select></div></div>`).join("")}
-function showReviewImage(i,j=0){document.getElementById("bigImage").src=reviewItems[i].imageData[j]||"";document.getElementById("imageModal").classList.add("show")}function selectAllReview(v){reviewItems.forEach(x=>x.selected=v);renderReview()}function closeReview(){document.getElementById("reviewModal").classList.remove("show")}function importReviewed(){const chosen=reviewItems.filter(x=>x.selected);if(!chosen.length){alert("Select at least one snag.");return}chosen.reverse().forEach((x,k)=>snags.unshift({id:nextId(),floor:x.floor||"",location:x.location||"",description:x.description||"",status:x.status||"Open",date:new Date(Date.now()-k).toISOString(),imageNames:x.imageNames||[],imageData:x.imageData||[],imageName:(x.imageNames||[])[0]||"",source:"WhatsApp ZIP"}));try{persist();closeReview();alert(`${chosen.length} snag(s) imported successfully.`)}catch(e){alert("Import exceeds browser storage. Please use a smaller batch or a storage-backed version.")}}
+function showReviewImage(i,j=0){document.getElementById("bigImage").src=reviewItems[i].imageData[j]||"";document.getElementById("imageModal").classList.add("show")}function selectAllReview(v){reviewItems.forEach(x=>x.selected=v);renderReview()}function closeReview(){document.getElementById("reviewModal").classList.remove("show")}async function importReviewed(){
+ const chosen=reviewItems.filter(x=>x.selected);
+ if(!chosen.length){alert("Select at least one snag.");return}
 
+ const newItems=[];
+ chosen.slice().reverse().forEach((x,k)=>{
+  newItems.unshift({
+   id:"SN-"+new Date().toISOString().slice(0,10).replaceAll("-","")+"-"+String(snags.length+newItems.length+1).padStart(3,"0"),
+   floor:x.floor||"",
+   location:x.location||"",
+   description:x.description||"",
+   status:x.status||"Open",
+   date:new Date(Date.now()-k).toISOString(),
+   imageNames:x.imageNames||[],
+   imageData:x.imageData||[],
+   imageName:(x.imageNames||[])[0]||"",
+   source:"WhatsApp ZIP"
+  });
+ });
+
+ try{
+  // Small transactions avoid one very large IndexedDB transaction on phones.
+  for(let i=0;i<newItems.length;i+=5){
+   await dbPutMany(newItems.slice(i,i+5));
+  }
+  snags=[...newItems,...snags];
+  render();
+  closeReview();
+  alert(`${newItems.length} snag(s) imported successfully.`);
+ }catch(e){
+  console.error(e);
+  alert("The import could not be saved. Your review data is still on screen. Check browser site storage permission/free space and try again.");
+ }
+}
 // ---------- Minimal XLSX writer with real embedded images ----------
 function escXml(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;")}
 function dataURLBinary(data){const m=String(data||"").match(/^data:image\/(png|jpe?g);base64,(.+)$/i);if(!m)return null;let b64=m[2],bin=atob(b64),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);let ext=m[1].toLowerCase();if(ext==="jpg")ext="jpeg";return {bytes,ext}}
@@ -48,5 +187,5 @@ function makeDrawingRels(count){let x=`<?xml version="1.0" encoding="UTF-8" stan
 let imageExportExt=[];
 function makeWorkbookFiles(){const rows=snags.slice().reverse(),files=[],imageInfos=[];imageExportExt=[];let imageNo=0;rows.forEach((x,ri)=>{const imgs=Array.isArray(x.imageData)?x.imageData:(x.imageData?[x.imageData]:[]);imgs.slice(0,5).forEach((d,i)=>{const parts=dataURLBinary(d);if(!parts)return;imageNo++;imageExportExt.push(parts.ext);imageInfos.push({col:6+i,row:ri+1});files.push({name:`xl/media/image${imageNo}.${parts.ext}`,data:parts.bytes})})});const contentTypes=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="png" ContentType="image/png"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`;files.unshift({name:"[Content_Types].xml",data:textBytes(contentTypes)});files.push({name:"_rels/.rels",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`)});files.push({name:"docProps/core.xml",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:creator>Snag Points</dc:creator><cp:lastModifiedBy>Snag Points</cp:lastModifiedBy><dcterms:created xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="dcterms:W3CDTF">${new Date().toISOString()}</dcterms:created></cp:coreProperties>`)});files.push({name:"docProps/app.xml",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Snag Points</Application></Properties>`)});files.push({name:"xl/workbook.xml",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Snag Register" sheetId="1" r:id="rId1"/></sheets></workbook>`)});files.push({name:"xl/_rels/workbook.xml.rels",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`)});files.push({name:"xl/styles.xml",data:textBytes(makeStyles())});files.push({name:"xl/worksheets/sheet1.xml",data:textBytes(makeSheet(rows,imageNo))});files.push({name:"xl/worksheets/_rels/sheet1.xml.rels",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>`)});files.push({name:"xl/drawings/drawing1.xml",data:textBytes(makeDrawing(imageInfos))});files.push({name:"xl/drawings/_rels/drawing1.xml.rels",data:textBytes(makeDrawingRels(imageInfos.length))});return files}
 async function exportExcel(){if(!snags.length){alert("No snags to export.");return}try{const files=makeWorkbookFiles(),xlsx=zipStore(files),blob=new Blob([xlsx],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="snag-register-photo-register.xlsx";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);alert(`Excel exported. ${imageExportExt.length} photo(s) were embedded in the XLSX file.`)}catch(e){console.error(e);alert("Excel export failed: "+e.message)}}
-render();
+initStorage().catch(e=>{console.error(e);alert("Could not initialize browser storage. Please allow storage for this site and reload the page.")});
 </script></body></html>
