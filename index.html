@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Snag Points</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#687386;--line:#e2e7ef;--accent:#1769e0;--danger:#d93025;--shadow:0 8px 28px rgba(20,35,60,.08)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+.top{max-width:1250px;margin:auto;padding:16px 20px;display:flex;gap:16px;align-items:center;justify-content:space-between}
+h1{font-size:22px;margin:0}.sub{color:var(--muted);font-size:13px;margin-top:3px}
+.wrap{max-width:1250px;margin:auto;padding:20px}
+.grid{display:grid;grid-template-columns:380px 1fr;gap:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:18px}
+h2{font-size:17px;margin:0 0 14px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-size:12px;font-weight:700;margin:12px 0 6px}input,select,textarea{width:100%;border:1px solid #ccd4df;border-radius:10px;padding:10px 11px;font:inherit;background:#fff;color:var(--text)}
+textarea{min-height:95px;resize:vertical}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff}.btn.secondary{background:#eef3fa;color:#234}.btn.danger{background:#fff0ef;color:var(--danger)}.btn:disabled{opacity:.5;cursor:not-allowed}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.preview{margin-top:10px;display:none}.preview img{width:100%;max-height:220px;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#f7f8fa}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px}.stat b{font-size:22px;display:block}.stat span{font-size:12px;color:var(--muted)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.toolbar input{flex:1;min-width:180px}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px}table{width:100%;border-collapse:collapse;min-width:820px}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;vertical-align:middle}th{background:#f7f9fc;font-size:12px;color:#526075;position:sticky;top:0}tr:last-child td{border-bottom:0}.thumb{width:58px;height:48px;object-fit:cover;border-radius:7px;border:1px solid var(--line);cursor:pointer}.pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800}.open{background:#eaf2ff;color:#1657b8}.progress{background:#fff5d8;color:#916b00}.closed{background:#e8f7ee;color:#197044}
+.modal{position:fixed;inset:0;background:rgba(10,20,35,.55);display:none;align-items:center;justify-content:center;padding:18px;z-index:30}.modal.show{display:flex}.modalbox{background:#fff;border-radius:16px;max-width:1100px;width:100%;max-height:92vh;overflow:auto;padding:18px}.modalhead{display:flex;justify-content:space-between;align-items:center;gap:10px}.reviewrow{display:grid;grid-template-columns:70px 1.1fr 1fr 1.5fr 110px;gap:9px;align-items:center;border-bottom:1px solid var(--line);padding:10px 0}.reviewrow img{width:64px;height:58px;object-fit:cover;border-radius:8px}.small{font-size:11px;color:var(--muted)}.notice{padding:10px 12px;background:#f0f6ff;border:1px solid #d5e6ff;border-radius:10px;font-size:12px;color:#31527b;margin-top:10px}.empty{text-align:center;color:var(--muted);padding:35px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.wrap{padding:12px}.row{grid-template-columns:1fr}.top{padding:12px}.card{padding:14px}.reviewrow{grid-template-columns:60px 1fr}.reviewrow>*:not(img){grid-column:2}.reviewrow img{grid-row:1 / span 4}}
+</style>
+</head>
+<body>
+<header><div class="top"><div><h1>🏗️ Snag Points</h1><div class="sub">Standalone snag register + WhatsApp ZIP importer</div></div><button class="btn secondary" onclick="exportExcel()">Export Excel</button></div></header>
+<main class="wrap">
+<div class="grid">
+<section class="card">
+<h2>➕ Add Snag</h2>
+<div class="row">
+<div><label>Floor</label><input id="floor" placeholder="e.g. 12th Floor"></div>
+<div><label>Location</label><input id="location" placeholder="e.g. Lobby / Flat 1203"></div>
+</div>
+<label>Description</label><textarea id="description" placeholder="Describe the snag..."></textarea>
+<label>Photo</label><input id="photo" type="file" accept="image/*">
+<div class="preview" id="photoPreview"><img id="previewImg"></div>
+<div class="actions"><button class="btn" onclick="addManual()">Save Snag</button><button class="btn secondary" onclick="clearForm()">Clear</button></div>
+<hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
+<h2>📦 Import WhatsApp ZIP</h2>
+<div class="small">Select the WhatsApp Export Chat ZIP. It should contain the chat .txt and the exported images.</div>
+<label>ZIP file</label><input id="zipFile" type="file" accept=".zip,application/zip">
+<div class="actions"><button class="btn" onclick="loadWhatsAppZip()">Read ZIP & Review</button></div>
+<div class="notice">The importer keeps everything in the browser. It does not upload your WhatsApp ZIP anywhere.</div>
+</section>
+
+<section>
+<div class="stats">
+<div class="stat"><b id="countAll">0</b><span>Total</span></div>
+<div class="stat"><b id="countOpen">0</b><span>Open</span></div>
+<div class="stat"><b id="countProgress">0</b><span>In Progress</span></div>
+<div class="stat"><b id="countClosed">0</b><span>Closed</span></div>
+</div>
+<div class="card">
+<div class="toolbar">
+<input id="search" placeholder="Search floor, location, description..." oninput="render()">
+<select id="statusFilter" onchange="render()"><option value="">All status</option><option>Open</option><option>In Progress</option><option>Closed</option></select>
+<button class="btn secondary" onclick="clearFilters()">Clear</button>
+</div>
+<div class="tablewrap"><table><thead><tr><th>Photo</th><th>ID</th><th>Floor</th><th>Location</th><th>Description</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="snagBody"></tbody></table></div>
+</div>
+</section>
+</div>
+</main>
+
+<div class="modal" id="reviewModal"><div class="modalbox">
+<div class="modalhead"><div><h2>WhatsApp Import Review</h2><div class="small" id="reviewSummary"></div></div><button class="btn secondary" onclick="closeReview()">Close</button></div>
+<div class="notice">Review the automatic matches before importing. You can edit floor, location, description, and status. Uncheck anything you do not want to import.</div>
+<div id="reviewList"></div>
+<div class="actions"><button class="btn" onclick="importReviewed()">Import Selected</button><button class="btn secondary" onclick="selectAllReview(true)">Select All</button><button class="btn secondary" onclick="selectAllReview(false)">Select None</button></div>
+</div></div>
+
+<div class="modal" id="imageModal"><div class="modalbox" style="max-width:850px;text-align:center"><div class="modalhead"><h2>Photo</h2><button class="btn secondary" onclick="document.getElementById('imageModal').classList.remove('show')">Close</button></div><img id="bigImage" style="max-width:100%;max-height:75vh;object-fit:contain"></div></div>
+
+<script>
+const KEY="standaloneSnags_v1";
+let snags=loadSnags(), reviewItems=[];
+
+function loadSnags(){try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){return[]}}
+function persist(){localStorage.setItem(KEY,JSON.stringify(snags));render()}
+function nextId(){return "SN-"+new Date().toISOString().slice(0,10).replaceAll("-","")+"-"+String(snags.length+1).padStart(3,"0")}
+function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function statusClass(s){return s==="Closed"?"closed":s==="In Progress"?"progress":"open"}
+
+document.getElementById("photo").addEventListener("change",e=>{
+ const f=e.target.files[0], p=document.getElementById("photoPreview");
+ if(!f){p.style.display="none";return}
+ const r=new FileReader();r.onload=()=>{document.getElementById("previewImg").src=r.result;p.style.display="block"};r.readAsDataURL(f);
+});
+
+function fileToDataURL(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
+async function addManual(){
+ const floor=document.getElementById("floor").value.trim(), loc=document.getElementById("location").value.trim(), desc=document.getElementById("description").value.trim(), f=document.getElementById("photo").files[0];
+ if(!floor||!loc||!desc||!f){alert("Please enter Floor, Location, Description and a photo.");return}
+ if(f.size>8*1024*1024){alert("Photo must be 8 MB or smaller.");return}
+ snags.unshift({id:nextId(),floor,location:loc,description:desc,status:"Open",date:new Date().toISOString(),imageName:f.name,imageData:await fileToDataURL(f)});
+ persist();clearForm();
+}
+function clearForm(){["floor","location","description"].forEach(id=>document.getElementById(id).value="");document.getElementById("photo").value="";document.getElementById("photoPreview").style.display="none"}
+function render(){
+ const q=document.getElementById("search").value.toLowerCase(), sf=document.getElementById("statusFilter").value;
+ const list=snags.filter(x=>(!sf||x.status===sf)&&(!q||[x.id,x.floor,x.location,x.description].join(" ").toLowerCase().includes(q)));
+ document.getElementById("snagBody").innerHTML=list.length?list.map(x=>`<tr>
+<td>${x.imageData?`<img class="thumb" src="${x.imageData}" onclick="showImage('${x.id}')">`:"—"}</td>
+<td><b>${escapeHtml(x.id)}</b></td><td>${escapeHtml(x.floor)}</td><td>${escapeHtml(x.location)}</td><td>${escapeHtml(x.description)}</td>
+<td><select onchange="changeStatus('${x.id}',this.value)"><option ${x.status==="Open"?"selected":""}>Open</option><option ${x.status==="In Progress"?"selected":""}>In Progress</option><option ${x.status==="Closed"?"selected":""}>Closed</option></select></td>
+<td>${new Date(x.date).toLocaleDateString()}</td><td><button class="btn danger" onclick="deleteSnag('${x.id}')">Delete</button></td></tr>`).join(""):`<tr><td colspan="8" class="empty">No snag points yet.</td></tr>`;
+ document.getElementById("countAll").textContent=snags.length;
+ document.getElementById("countOpen").textContent=snags.filter(x=>x.status==="Open").length;
+ document.getElementById("countProgress").textContent=snags.filter(x=>x.status==="In Progress").length;
+ document.getElementById("countClosed").textContent=snags.filter(x=>x.status==="Closed").length;
+}
+function changeStatus(id,s){const x=snags.find(a=>a.id===id);if(x){x.status=s;persist()}}
+function deleteSnag(id){if(confirm("Delete this snag?")){snags=snags.filter(x=>x.id!==id);persist()}}
+function showImage(id){const x=snags.find(a=>a.id===id);if(x?.imageData){document.getElementById("bigImage").src=x.imageData;document.getElementById("imageModal").classList.add("show")}}
+function clearFilters(){document.getElementById("search").value="";document.getElementById("statusFilter").value="";render()}
+
+function parseWhatsApp(text){
+ const lines=text.replace(/\r/g,"").split("\n"), msgs=[]; let cur=null;
+ const re=/^(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}),?\s+(\d{1,2}:\d{2}(?:\s?[AP]M)?)\s*-\s*([^:]+):\s*(.*)$/i;
+ const re2=/^\[(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}),?\s+(\d{1,2}:\d{2}(?:\s?[AP]M)?)\]\s*([^:]+):\s*(.*)$/i;
+ for(const line of lines){
+   let m=line.match(re)||line.match(re2);
+   if(m){cur={date:m[1],time:m[2],sender:m[3].trim(),text:m[4].trim()};msgs.push(cur)}
+   else if(cur&&line.trim())cur.text+=" "+line.trim();
+ }
+ return msgs;
+}
+function normalizeName(s){return String(s||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
+function imageExt(n){return /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(n)}
+function findImageMention(msg, names){
+ const n=normalizeName(msg.text);
+ return names.find(name=>{const b=normalizeName(name).replace(/\.[a-z0-9]+$/,"");return b.length>4&&n.includes(b)});
+}
+function extractFields(text){
+ const clean=text.replace(/<media omitted>|image omitted|video omitted/ig,"").trim();
+ let floor="",location="",description=clean;
+ const fm=clean.match(/\b(?:floor|flr)\s*[:#-]?\s*([A-Za-z0-9 -]{1,30})/i);
+ if(fm){floor=fm[1].trim();description=description.replace(fm[0],"").trim()}
+ const lm=clean.match(/\b(?:location|loc|area)\s*[:#-]?\s*([^,;|]+)(?:[,;|]|$)/i);
+ if(lm){location=lm[1].trim();description=description.replace(lm[0],"").trim()}
+ return {floor,location,description:description||"WhatsApp snag photo"};
+}
+function dataURLFromBlob(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(blob)})}
+
+async function loadWhatsAppZip(){
+ const file=document.getElementById("zipFile").files[0]; if(!file){alert("Select the WhatsApp ZIP first.");return}
+ if(!window.JSZip){alert("ZIP library could not be loaded. Check your internet connection and reload the page.");return}
+ try{
+  const zip=await JSZip.loadAsync(file), entries=Object.values(zip.files).filter(x=>!x.dir);
+  const txtEntry=entries.find(x=>/\.txt$/i.test(x.name)&&/(chat|_chat|wa)/i.test(x.name))||entries.find(x=>/\.txt$/i.test(x.name));
+  if(!txtEntry)throw new Error("No chat .txt file found inside the ZIP.");
+  const text=await txtEntry.async("string"), msgs=parseWhatsApp(text), imgs=entries.filter(x=>imageExt(x.name));
+  const imageDataMap={}; for(const z of imgs){try{imageDataMap[z.name]=await dataURLFromBlob(await z.async("blob"))}catch(e){}}
+  reviewItems=[];
+  const imageNames=imgs.map(x=>x.name);
+  for(let i=0;i<imgs.length;i++){
+    const img=imgs[i], mention=msgs.find(m=>findImageMention(m,imageNames)===img.name);
+    let msg=mention, confidence="Filename match";
+    if(!msg){
+      const possible=msgs.filter(m=>/image|photo|img-|media omitted|attached|jpg|jpeg|png|webp|heic/i.test(m.text));
+      msg=possible[i]||msgs[Math.min(i,msgs.length-1)];
+      confidence="Best-effort match";
+    }
+    const fields=extractFields(msg?.text||"");
+    reviewItems.push({selected:true,imageName:img.name,imageData:imageDataMap[img.name],floor:fields.floor,location:fields.location,description:fields.description,status:"Open",confidence});
+  }
+  if(!reviewItems.length){alert("No image files were found in the ZIP.");return}
+  document.getElementById("reviewSummary").textContent=`Found ${imgs.length} image(s) and ${msgs.length} chat message(s).`;
+  renderReview();document.getElementById("reviewModal").classList.add("show");
+ }catch(e){console.error(e);alert("Could not read the WhatsApp ZIP: "+e.message)}
+}
+function renderReview(){
+ document.getElementById("reviewList").innerHTML=reviewItems.map((x,i)=>`<div class="reviewrow">
+<img src="${x.imageData||""}" onclick="showReviewImage(${i})">
+<div><label><input type="checkbox" data-i="${i}" ${x.selected?"checked":""} onchange="reviewItems[${i}].selected=this.checked"> Select</label><div class="small">${escapeHtml(x.imageName)}<br>${escapeHtml(x.confidence)}</div></div>
+<div><label>Floor</label><input value="${escapeHtml(x.floor)}" onchange="reviewItems[${i}].floor=this.value"></div>
+<div><label>Location</label><input value="${escapeHtml(x.location)}" onchange="reviewItems[${i}].location=this.value"><label>Description</label><input value="${escapeHtml(x.description)}" onchange="reviewItems[${i}].description=this.value"></div>
+<div><label>Status</label><select onchange="reviewItems[${i}].status=this.value"><option ${x.status==="Open"?"selected":""}>Open</option><option ${x.status==="In Progress"?"selected":""}>In Progress</option><option ${x.status==="Closed"?"selected":""}>Closed</option></select></div>
+</div>`).join("");
+}
+function showReviewImage(i){document.getElementById("bigImage").src=reviewItems[i].imageData;document.getElementById("imageModal").classList.add("show")}
+function selectAllReview(v){reviewItems.forEach(x=>x.selected=v);renderReview()}
+function closeReview(){document.getElementById("reviewModal").classList.remove("show")}
+function importReviewed(){
+ const chosen=reviewItems.filter(x=>x.selected); if(!chosen.length){alert("Select at least one snag.");return}
+ const now=Date.now();
+ chosen.reverse().forEach((x,k)=>snags.unshift({id:nextId(),floor:x.floor||"Not specified",location:x.location||"Not specified",description:x.description||"WhatsApp snag photo",status:x.status||"Open",date:new Date(now-k).toISOString(),imageName:x.imageName,imageData:x.imageData,source:"WhatsApp ZIP"}));
+ persist();closeReview();alert(`${chosen.length} snag(s) imported successfully.`);
+}
+function exportExcel(){
+ if(!snags.length){alert("No snags to export.");return}
+ if(!window.XLSX){alert("Excel library could not be loaded. Check your internet connection.");return}
+ const rows=snags.map(x=>({ID:x.id,Floor:x.floor,Location:x.location,Description:x.description,Status:x.status,Date:new Date(x.date).toLocaleString(),Photo:x.imageName||""}));
+ const ws=XLSX.utils.json_to_sheet(rows), wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Snag Register");
+ XLSX.writeFile(wb,"snag-register.xlsx");
+}
+render();
+</script>
+</body>
+</html>
