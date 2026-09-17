@@ -172,20 +172,131 @@ function showReviewImage(i,j=0){document.getElementById("bigImage").src=reviewIt
   alert("The import could not be saved. Your review data is still on screen. Check browser site storage permission/free space and try again.");
  }
 }
-// ---------- Minimal XLSX writer with real embedded images ----------
+// ---------- Excel "Place in Cell" XLSX writer ----------
 function escXml(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;")}
-function dataURLBinary(data){const m=String(data||"").match(/^data:image\/(png|jpe?g);base64,(.+)$/i);if(!m)return null;let b64=m[2],bin=atob(b64),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);let ext=m[1].toLowerCase();if(ext==="jpg")ext="jpeg";return {bytes,ext}}
-function crc32(bytes){let table=crc32.table;if(!table){table=crc32.table=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xedb88320^(c>>>1)):(c>>>1);table[n]=c>>>0}}let c=0xffffffff;for(let i=0;i<bytes.length;i++)c=table[(c^bytes[i])&255]^(c>>>8);return (c^0xffffffff)>>>0}
-function le16(n){return new Uint8Array([n&255,(n>>>8)&255])}function le32(n){return new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255])}
+function dataURLBinary(data){
+ const m=String(data||"").match(/^data:image\/(png|jpe?g|gif|webp);base64,(.+)$/i);
+ if(!m)return null;
+ let b64=m[2],bin=atob(b64),bytes=new Uint8Array(bin.length);
+ for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+ let ext=m[1].toLowerCase(); if(ext==="jpg")ext="jpeg";
+ // Excel's modern Place in Cell supports these common formats. Keep original bytes.
+ if(!["jpeg","png","gif","webp"].includes(ext))return null;
+ return {bytes,ext};
+}
+function crc32(bytes){let table=crc32.table;if(!table){table=crc32.table=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xedb88320^(c>>>1)):(c>>>1);table[n]=c>>>0}}let c=0xffffffff;for(let i=0;i<bytes.length;i++)c=table[(c^bytes[i])&255]^(c>>>8);return(c^0xffffffff)>>>0}
+function le16(n){return new Uint8Array([n&255,(n>>>8)&255])}
+function le32(n){return new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255])}
 function concatBytes(parts){let len=parts.reduce((n,a)=>n+a.length,0),out=new Uint8Array(len),p=0;for(const a of parts){out.set(a,p);p+=a.length}return out}
-function zipStore(files){const locals=[],centrals=[];let offset=0;for(const f of files){const name=new TextEncoder().encode(f.name),data=f.data,crc=crc32(data);const local=concatBytes([new Uint8Array([0x50,0x4b,0x03,0x04]),le16(20),le16(0),le16(0),le16(0),le16(0),le32(crc),le32(data.length),le32(data.length),le16(name.length),le16(0),name,data]);locals.push(local);const central=concatBytes([new Uint8Array([0x50,0x4b,0x01,0x02]),le16(20),le16(20),le16(0),le16(0),le16(0),le16(0),le32(crc),le32(data.length),le32(data.length),le16(name.length),le16(0),le16(0),le16(0),le16(0),le32(0),le32(offset),name]);centrals.push(central);offset+=local.length}const cd=concatBytes(centrals),body=concatBytes(locals);const eocd=concatBytes([new Uint8Array([0x50,0x4b,0x05,0x06]),le16(0),le16(0),le16(files.length),le16(files.length),le32(cd.length),le32(body.length),le16(0)]);return concatBytes([body,cd,eocd])}
+function zipStore(files){
+ const locals=[],centrals=[];let offset=0;
+ for(const f of files){
+  const name=new TextEncoder().encode(f.name),data=f.data,crc=crc32(data);
+  const local=concatBytes([new Uint8Array([0x50,0x4b,0x03,0x04]),le16(20),le16(0),le16(0),le16(0),le16(0),le32(crc),le32(data.length),le32(data.length),le16(name.length),le16(0),name,data]);
+  const central=concatBytes([new Uint8Array([0x50,0x4b,0x01,0x02]),le16(20),le16(20),le16(0),le16(0),le16(0),le16(0),le32(crc),le32(data.length),le32(data.length),le16(name.length),le16(0),le16(0),le16(0),le16(0),le32(0),le32(offset),name]);
+  locals.push(local);centrals.push(central);offset+=local.length;
+ }
+ const cd=concatBytes(centrals),body=concatBytes(locals);
+ const eocd=concatBytes([new Uint8Array([0x50,0x4b,0x05,0x06]),le16(0),le16(0),le16(files.length),le16(files.length),le32(cd.length),le32(body.length),le16(0)]);
+ return concatBytes([body,cd,eocd]);
+}
 function textBytes(s){return new TextEncoder().encode(s)}
-function makeStyles(){return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9E8F5"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="1" borderId="0"/></cellXfs></styleSheet>`}
-function makeSheet(rows,imageCount){let xml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><dimension ref="A1:K${rows.length+1}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols><col min="1" max="1" width="8"/><col min="2" max="2" width="38"/><col min="3" max="3" width="22"/><col min="4" max="4" width="42"/><col min="5" max="5" width="15"/><col min="6" max="6" width="20"/>`;for(let c=7;c<=11;c++)xml+=`<col min="${c}" max="${c}" width="23"/>`;xml+=`</cols><sheetData>`;const headers=["Sr.No","Location","Snag Point Type","Description","Status","Date","Image 1","Image 2","Image 3","Image 4","Image 5"];xml+=`<row r="1" ht="30" customHeight="1">`;headers.forEach((h,i)=>xml+=`<c r="${String.fromCharCode(65+i)}1" s="1" t="inlineStr"><is><t>${escXml(h)}</t></is></c>`);xml+=`</row>`;rows.forEach((x,ri)=>{let r=ri+2;xml+=`<row r="${r}" ht="120" customHeight="1">`;const vals=[ri+1,x.location||"",x.type||x.snagPointType||"",x.description||"",x.status||"Open",x.date?new Date(x.date).toLocaleString():""];vals.forEach((v,i)=>{const col=String.fromCharCode(65+i);xml+=`<c r="${col}${r}" t="inlineStr"><is><t xml:space="preserve">${escXml(v)}</t></is></c>`});for(let i=0;i<5;i++){const col=String.fromCharCode(71+i);xml+=`<c r="${col}${r}"/>`}xml+=`</row>`});return xml+`</sheetData><pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/><drawing r:id="rId1"/></worksheet>`}
-function makeDrawing(imageInfos){let xml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">`;imageInfos.forEach((im,i)=>{const col=im.col,row=im.row;xml+=`<xdr:twoCellAnchor editAs="oneCell"><xdr:from><xdr:col>${col}</xdr:col><xdr:colOff>76200</xdr:colOff><xdr:row>${row}</xdr:row><xdr:rowOff>76200</xdr:rowOff></xdr:from><xdr:to><xdr:col>${col+1}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${row+1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${i+1}" name="Picture ${i+1}"/><xdr:cNvPicPr/></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="rId${i+1}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:twoCellAnchor>`});return xml+`</xdr:wsDr>`}
-function makeDrawingRels(count){let x=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`;for(let i=1;i<=count;i++)x+=`<Relationship Id="rId${i}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image${i}.${imageExportExt[i-1]}"/>`;return x+`</Relationships>`}
-let imageExportExt=[];
-function makeWorkbookFiles(){const rows=snags.slice().reverse(),files=[],imageInfos=[];imageExportExt=[];let imageNo=0;rows.forEach((x,ri)=>{const imgs=Array.isArray(x.imageData)?x.imageData:(x.imageData?[x.imageData]:[]);imgs.slice(0,5).forEach((d,i)=>{const parts=dataURLBinary(d);if(!parts)return;imageNo++;imageExportExt.push(parts.ext);imageInfos.push({col:6+i,row:ri+1});files.push({name:`xl/media/image${imageNo}.${parts.ext}`,data:parts.bytes})})});const contentTypes=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="png" ContentType="image/png"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`;files.unshift({name:"[Content_Types].xml",data:textBytes(contentTypes)});files.push({name:"_rels/.rels",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`)});files.push({name:"docProps/core.xml",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:creator>Snag Points</dc:creator><cp:lastModifiedBy>Snag Points</cp:lastModifiedBy><dcterms:created xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="dcterms:W3CDTF">${new Date().toISOString()}</dcterms:created></cp:coreProperties>`)});files.push({name:"docProps/app.xml",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Snag Points</Application></Properties>`)});files.push({name:"xl/workbook.xml",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Snag Register" sheetId="1" r:id="rId1"/></sheets></workbook>`)});files.push({name:"xl/_rels/workbook.xml.rels",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`)});files.push({name:"xl/styles.xml",data:textBytes(makeStyles())});files.push({name:"xl/worksheets/sheet1.xml",data:textBytes(makeSheet(rows,imageNo))});files.push({name:"xl/worksheets/_rels/sheet1.xml.rels",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>`)});files.push({name:"xl/drawings/drawing1.xml",data:textBytes(makeDrawing(imageInfos))});files.push({name:"xl/drawings/_rels/drawing1.xml.rels",data:textBytes(makeDrawingRels(imageInfos.length))});return files}
-async function exportExcel(){if(!snags.length){alert("No snags to export.");return}try{const files=makeWorkbookFiles(),xlsx=zipStore(files),blob=new Blob([xlsx],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="snag-register-photo-register.xlsx";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);alert(`Excel exported. ${imageExportExt.length} photo(s) were embedded in the XLSX file.`)}catch(e){console.error(e);alert("Excel export failed: "+e.message)}}
+function makeStyles(){
+ return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9E8F5"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="1" borderId="0"/></cellXfs></styleSheet>`;
+}
+function makeSheet(rows,imageCellMap){
+ const headers=["Sr.No","Location","Snag Point Type","Description","Status","Date","Image 1","Image 2","Image 3","Image 4","Image 5"];
+ let xml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:K${rows.length+1}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols><col min="1" max="1" width="8"/><col min="2" max="2" width="38"/><col min="3" max="3" width="22"/><col min="4" max="4" width="42"/><col min="5" max="5" width="15"/><col min="6" max="6" width="20"/>`;
+ for(let c=7;c<=11;c++)xml+=`<col min="${c}" max="${c}" width="28"/>`;
+ xml+=`</cols><sheetData><row r="1" ht="30" customHeight="1">`;
+ headers.forEach((h,i)=>xml+=`<c r="${String.fromCharCode(65+i)}1" s="1" t="inlineStr"><is><t>${escXml(h)}</t></is></c>`);
+ xml+=`</row>`;
+ rows.forEach((x,ri)=>{
+  const r=ri+2;
+  xml+=`<row r="${r}" ht="145" customHeight="1">`;
+  const vals=[ri+1,x.location||"",x.type||x.snagPointType||"",x.description||"",x.status||"Open",x.date?new Date(x.date).toLocaleString():""];
+  vals.forEach((v,i)=>{const col=String.fromCharCode(65+i);xml+=`<c r="${col}${r}" t="inlineStr"><is><t xml:space="preserve">${escXml(v)}</t></is></c>`});
+  for(let i=0;i<5;i++){
+   const col=String.fromCharCode(71+i),cell=col+r,idx=imageCellMap[cell];
+   if(idx!=null) xml+=`<c r="${cell}" t="e" vm="${idx+1}"><v>#VALUE!</v></c>`;
+   else xml+=`<c r="${cell}"/>`;
+  }
+  xml+=`</row>`;
+ });
+ return xml+`</sheetData><pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/></worksheet>`;
+}
+function makeMetadata(imageCount){
+ let future="";
+ for(let i=0;i<imageCount;i++)future+=`<bk><extLst><ext uri="{3e2802c4-a4d2-4d8b-9148-e3be6c30e623}"><xlrd:rvb i="${i}"/></ext></extLst></bk>`;
+ let values="";
+ for(let i=0;i<imageCount;i++)values+=`<bk><rc t="1" v="${i}"/></bk>`;
+ return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:xlrd="http://schemas.microsoft.com/office/spreadsheetml/2017/richdata"><metadataTypes count="1"><metadataType name="XLRICHVALUE" minSupportedVersion="120000" copy="1" pasteAll="1" pasteValues="1" merge="1" splitFirst="1" rowColShift="1" clearFormats="1" clearComments="1" assign="1" coerce="1"/></metadataTypes><futureMetadata name="XLRICHVALUE" count="${imageCount}">${future}</futureMetadata><valueMetadata count="${imageCount}">${values}</valueMetadata></metadata>`;
+}
+function makeRichValueTypes(){
+ return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><rvTypes xmlns="http://schemas.microsoft.com/office/spreadsheetml/2017/richdata"><rvType name="_localImage" type="0"/></rvTypes>`;
+}
+function makeRichValueStructure(){
+ return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><rvStructures xmlns="http://schemas.microsoft.com/office/spreadsheetml/2017/richdata" count="1"><s t="_localImage"><k n="_rvRel:LocalImageIdentifier" t="i"/><k n="CalcOrigin" t="i"/></s></rvStructures>`;
+}
+function makeRichValueData(imageCount){
+ let rows="";
+ for(let i=0;i<imageCount;i++)rows+=`<rv s="0"><v>${i}</v><v>5</v></rv>`;
+ return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><rvData xmlns="http://schemas.microsoft.com/office/spreadsheetml/2017/richdata" count="${imageCount}">${rows}</rvData>`;
+}
+function makeRichValueRel(imageCount){
+ let rows="";
+ for(let i=0;i<imageCount;i++)rows+=`<rel r:id="rId${i+1}"/>`;
+ return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><richValueRels xmlns="http://schemas.microsoft.com/office/2022/10/richvaluerel" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${rows}</richValueRels>`;
+}
+function makeRichValueRelRels(imageInfos){
+ let rows="";
+ imageInfos.forEach((im,i)=>rows+=`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image${i+1}.${im.ext}"/>`);
+ return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rows}</Relationships>`;
+}
+function makeWorkbookFiles(){
+ const rows=snags.slice().reverse(),files=[],imageInfos=[],imageCellMap={};
+ rows.forEach((x,ri)=>{
+  const imgs=Array.isArray(x.imageData)?x.imageData:(x.imageData?[x.imageData]:[]);
+  imgs.slice(0,5).forEach((d,i)=>{
+   const parts=dataURLBinary(d);if(!parts)return;
+   const n=imageInfos.length;
+   imageInfos.push({ext:parts.ext,bytes:parts.bytes});
+   imageCellMap[String.fromCharCode(71+i)+(ri+2)]=n;
+  });
+ });
+ const count=imageInfos.length;
+ const contentTypes=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="png" ContentType="image/png"/><Default Extension="gif" ContentType="image/gif"/><Default Extension="webp" ContentType="image/webp"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/metadata.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheetMetadata+xml"/><Override PartName="/xl/richData/rdRichValueTypes.xml" ContentType="application/vnd.ms-excel.rdrichvaluetypes+xml"/><Override PartName="/xl/richData/rdrichvalue.xml" ContentType="application/vnd.ms-excel.rdrichvalue+xml"/><Override PartName="/xl/richData/rdrichvaluestructure.xml" ContentType="application/vnd.ms-excel.rdrichvaluestructure+xml"/><Override PartName="/xl/richData/richValueRel.xml" ContentType="application/vnd.ms-excel.richvaluerel+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`;
+ files.push({name:"[Content_Types].xml",data:textBytes(contentTypes)});
+ files.push({name:"_rels/.rels",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`)});
+ files.push({name:"docProps/core.xml",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:creator>Snag Points</dc:creator></cp:coreProperties>`)});
+ files.push({name:"docProps/app.xml",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Microsoft Excel</Application></Properties>`)});
+ files.push({name:"xl/workbook.xml",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Snag Register" sheetId="1" r:id="rId1"/></sheets></workbook>`)});
+ files.push({name:"xl/_rels/workbook.xml.rels",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sheetMetadata" Target="metadata.xml"/><Relationship Id="rId4" Type="http://schemas.microsoft.com/office/2022/10/relationships/richValueRel" Target="richData/richValueRel.xml"/><Relationship Id="rId5" Type="http://schemas.microsoft.com/office/2017/06/relationships/rdRichValue" Target="richData/rdrichvalue.xml"/><Relationship Id="rId6" Type="http://schemas.microsoft.com/office/2017/06/relationships/rdRichValueStructure" Target="richData/rdrichvaluestructure.xml"/><Relationship Id="rId7" Type="http://schemas.microsoft.com/office/2017/06/relationships/rdRichValueTypes" Target="richData/rdRichValueTypes.xml"/></Relationships>`)});
+ files.push({name:"xl/styles.xml",data:textBytes(makeStyles())});
+ files.push({name:"xl/metadata.xml",data:textBytes(makeMetadata(count))});
+ files.push({name:"xl/richData/rdRichValueTypes.xml",data:textBytes(makeRichValueTypes())});
+ files.push({name:"xl/richData/rdrichvalue.xml",data:textBytes(makeRichValueData(count))});
+ files.push({name:"xl/richData/rdrichvaluestructure.xml",data:textBytes(makeRichValueStructure())});
+ files.push({name:"xl/richData/richValueRel.xml",data:textBytes(makeRichValueRel(count))});
+ files.push({name:"xl/richData/_rels/richValueRel.xml.rels",data:textBytes(makeRichValueRelRels(imageInfos))});
+ files.push({name:"xl/worksheets/sheet1.xml",data:textBytes(makeSheet(rows,imageCellMap))});
+ files.push({name:"xl/worksheets/_rels/sheet1.xml.rels",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sheetMetadata" Target="../metadata.xml"/></Relationships>`)});
+ imageInfos.forEach((im,i)=>files.push({name:`xl/media/image${i+1}.${im.ext}`,data:im.bytes}));
+ return files;
+}
+async function exportExcel(){
+ if(!snags.length){alert("No snags to export.");return}
+ try{
+  const files=makeWorkbookFiles();
+  const xlsx=zipStore(files);
+  const blob=new Blob([xlsx],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="snag-register-photo-register.xlsx";
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+  const count=files.filter(f=>f.name.startsWith("xl/media/")).length;
+  alert(`Excel exported with ${count} true in-cell photo(s). Images are stored as original photo files, not resized copies. This uses Excel's modern "Place in Cell" format.`);
+ }catch(e){console.error(e);alert("Excel export failed: "+e.message)}
+}
 initStorage().catch(e=>{console.error(e);alert("Could not initialize browser storage. Please allow storage for this site and reload the page.")});
 </script></body></html>
