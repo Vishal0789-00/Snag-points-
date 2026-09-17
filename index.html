@@ -1,373 +1,52 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Snag Points</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#687386;--line:#e2e7ef;--accent:#1769e0;--danger:#d93025;--shadow:0 8px 28px rgba(20,35,60,.08)}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
-.top{max-width:1250px;margin:auto;padding:16px 20px;display:flex;gap:16px;align-items:center;justify-content:space-between}
-h1{font-size:22px;margin:0}.sub{color:var(--muted);font-size:13px;margin-top:3px}
-.wrap{max-width:1250px;margin:auto;padding:20px}
-.grid{display:grid;grid-template-columns:380px 1fr;gap:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:18px}
-h2{font-size:17px;margin:0 0 14px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-label{display:block;font-size:12px;font-weight:700;margin:12px 0 6px}input,select,textarea{width:100%;border:1px solid #ccd4df;border-radius:10px;padding:10px 11px;font:inherit;background:#fff;color:var(--text)}
-textarea{min-height:95px;resize:vertical}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff}.btn.secondary{background:#eef3fa;color:#234}.btn.danger{background:#fff0ef;color:var(--danger)}.btn:disabled{opacity:.5;cursor:not-allowed}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.preview{margin-top:10px;display:none}.preview img{width:100%;max-height:220px;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#f7f8fa}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px}.stat b{font-size:22px;display:block}.stat span{font-size:12px;color:var(--muted)}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.toolbar input{flex:1;min-width:180px}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px}table{width:100%;border-collapse:collapse;min-width:820px}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;vertical-align:middle}th{background:#f7f9fc;font-size:12px;color:#526075;position:sticky;top:0}tr:last-child td{border-bottom:0}.thumb{width:58px;height:48px;object-fit:cover;border-radius:7px;border:1px solid var(--line);cursor:pointer}.pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800}.open{background:#eaf2ff;color:#1657b8}.progress{background:#fff5d8;color:#916b00}.closed{background:#e8f7ee;color:#197044}
-.modal{position:fixed;inset:0;background:rgba(10,20,35,.55);display:none;align-items:center;justify-content:center;padding:18px;z-index:30}.modal.show{display:flex}.modalbox{background:#fff;border-radius:16px;max-width:1100px;width:100%;max-height:92vh;overflow:auto;padding:18px}.modalhead{display:flex;justify-content:space-between;align-items:center;gap:10px}.reviewrow{display:grid;grid-template-columns:70px 1.1fr 1fr 1.5fr 110px;gap:9px;align-items:center;border-bottom:1px solid var(--line);padding:10px 0}.reviewrow img{width:64px;height:58px;object-fit:cover;border-radius:8px}.small{font-size:11px;color:var(--muted)}.notice{padding:10px 12px;background:#f0f6ff;border:1px solid #d5e6ff;border-radius:10px;font-size:12px;color:#31527b;margin-top:10px}.empty{text-align:center;color:var(--muted);padding:35px}
-@media(max-width:900px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:560px){.wrap{padding:12px}.row{grid-template-columns:1fr}.top{padding:12px}.card{padding:14px}.reviewrow{grid-template-columns:60px 1fr}.reviewrow>*:not(img){grid-column:2}.reviewrow img{grid-row:1 / span 4}}
-</style>
-</head>
-<body>
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}.top{max-width:1250px;margin:auto;padding:16px 20px;display:flex;gap:16px;align-items:center;justify-content:space-between}h1{font-size:22px;margin:0}.sub{color:var(--muted);font-size:13px;margin-top:3px}.wrap{max-width:1250px;margin:auto;padding:20px}.grid{display:grid;grid-template-columns:380px 1fr;gap:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:18px}h2{font-size:17px;margin:0 0 14px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}label{display:block;font-size:12px;font-weight:700;margin:12px 0 6px}input,select,textarea{width:100%;border:1px solid #ccd4df;border-radius:10px;padding:10px 11px;font:inherit;background:#fff;color:var(--text)}textarea{min-height:95px;resize:vertical}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff}.btn.secondary{background:#eef3fa;color:#234}.btn.danger{background:#fff0ef;color:var(--danger)}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.preview{margin-top:10px;display:none}.preview img{width:100%;max-height:220px;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#f7f8fa}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px}.stat b{font-size:22px;display:block}.stat span{font-size:12px;color:var(--muted)}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.toolbar input{flex:1;min-width:180px}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px}table{width:100%;border-collapse:collapse;min-width:900px}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;vertical-align:middle}th{background:#f7f9fc;font-size:12px;color:#526075}.thumb{width:58px;height:48px;object-fit:cover;border-radius:7px;border:1px solid var(--line);cursor:pointer}.modal{position:fixed;inset:0;background:rgba(10,20,35,.55);display:none;align-items:center;justify-content:center;padding:18px;z-index:30}.modal.show{display:flex}.modalbox{background:#fff;border-radius:16px;max-width:1100px;width:100%;max-height:92vh;overflow:auto;padding:18px}.modalhead{display:flex;justify-content:space-between;align-items:center;gap:10px}.reviewrow{display:grid;grid-template-columns:150px 1.1fr 1fr 1.5fr 110px;gap:9px;align-items:center;border-bottom:1px solid var(--line);padding:10px 0}.reviewrow img{width:64px;height:58px;object-fit:cover;border-radius:8px}.small{font-size:11px;color:var(--muted)}.notice{padding:10px 12px;background:#f0f6ff;border:1px solid #d5e6ff;border-radius:10px;font-size:12px;color:#31527b;margin-top:10px}.empty{text-align:center;color:var(--muted);padding:35px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.wrap{padding:12px}.row{grid-template-columns:1fr}.top{padding:12px}.card{padding:14px}.reviewrow{grid-template-columns:60px 1fr}.reviewrow>*:not(img){grid-column:2}.reviewrow img{grid-row:1 / span 4}}
+</style></head><body>
 <header><div class="top"><div><h1>🏗️ Snag Points</h1><div class="sub">Standalone snag register + WhatsApp ZIP importer</div></div><button class="btn secondary" onclick="exportExcel()">Export Excel</button></div></header>
-<main class="wrap">
-<div class="grid">
-<section class="card">
-<h2>➕ Add Snag</h2>
-<div class="row">
-<div><label>Floor</label><input id="floor" placeholder="e.g. 12th Floor"></div>
-<div><label>Location</label><input id="location" placeholder="e.g. Lobby / Flat 1203"></div>
-</div>
-<label>Description</label><textarea id="description" placeholder="Describe the snag..."></textarea>
-<label>Photo</label><input id="photo" type="file" accept="image/*">
-<div class="preview" id="photoPreview"><img id="previewImg"></div>
-<div class="actions"><button class="btn" onclick="addManual()">Save Snag</button><button class="btn secondary" onclick="clearForm()">Clear</button></div>
-<hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
-<h2>📦 Import WhatsApp ZIP</h2>
-<div class="small">Select the WhatsApp Export Chat ZIP. It should contain the chat .txt and the exported images.</div>
-<label>ZIP file</label><input id="zipFile" type="file" accept=".zip,application/zip">
-<div class="actions"><button class="btn" onclick="loadWhatsAppZip()">Read ZIP & Review</button></div>
-<div class="notice">The importer keeps everything in the browser. It does not upload your WhatsApp ZIP anywhere. The WhatsApp filename/“file attached” marker is not copied into Description.</div>
-</section>
-
-<section>
-<div class="stats">
-<div class="stat"><b id="countAll">0</b><span>Total</span></div>
-<div class="stat"><b id="countOpen">0</b><span>Open</span></div>
-<div class="stat"><b id="countProgress">0</b><span>In Progress</span></div>
-<div class="stat"><b id="countClosed">0</b><span>Closed</span></div>
-</div>
-<div class="card">
-<div class="toolbar">
-<input id="search" placeholder="Search floor, location, description..." oninput="render()">
-<select id="statusFilter" onchange="render()"><option value="">All status</option><option>Open</option><option>In Progress</option><option>Closed</option></select>
-<button class="btn secondary" onclick="clearFilters()">Clear</button>
-</div>
-<div class="tablewrap"><table><thead><tr><th>Photo</th><th>ID</th><th>Floor</th><th>Location</th><th>Description</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="snagBody"></tbody></table></div>
-</div>
-</section>
-</div>
-</main>
-
-<div class="modal" id="reviewModal"><div class="modalbox">
-<div class="modalhead"><div><h2>WhatsApp Import Review</h2><div class="small" id="reviewSummary"></div></div><button class="btn secondary" onclick="closeReview()">Close</button></div>
-<div class="notice">Review the automatic matches before importing. You can edit floor, location, description, and status. Uncheck anything you do not want to import.</div>
-<div id="reviewList"></div>
-<div class="actions"><button class="btn" onclick="importReviewed()">Import Selected</button><button class="btn secondary" onclick="selectAllReview(true)">Select All</button><button class="btn secondary" onclick="selectAllReview(false)">Select None</button></div>
-</div></div>
-
+<main class="wrap"><div class="grid"><section class="card"><h2>➕ Add Snag</h2><div class="row"><div><label>Floor</label><input id="floor" placeholder="e.g. 5th Floor"></div><div><label>Location</label><input id="location" placeholder="e.g. LWR Passage Wall"></div></div><label>Description</label><textarea id="description" placeholder="Describe the snag..."></textarea><label>Photo</label><input id="photo" type="file" accept="image/*"><div class="preview" id="photoPreview"><img id="previewImg"></div><div class="actions"><button class="btn" onclick="addManual()">Save Snag</button><button class="btn secondary" onclick="clearForm()">Clear</button></div><hr style="border:0;border-top:1px solid var(--line);margin:20px 0"><h2>📦 Import WhatsApp ZIP</h2><div class="small">Choose the ZIP produced by WhatsApp Export Chat. The ZIP is processed locally in this browser.</div><label>ZIP file</label><input id="zipFile" type="file" accept=".zip,application/zip"><div class="actions"><button class="btn" onclick="loadWhatsAppZip()">Read ZIP & Review</button></div><div class="notice">No Excel or WhatsApp library is required. The ZIP reader and Excel writer are built into this page, so the export works without relying on a CDN.</div></section>
+<section><div class="stats"><div class="stat"><b id="countAll">0</b><span>Total</span></div><div class="stat"><b id="countOpen">0</b><span>Open</span></div><div class="stat"><b id="countProgress">0</b><span>In Progress</span></div><div class="stat"><b id="countClosed">0</b><span>Closed</span></div></div><div class="card"><div class="toolbar"><input id="search" placeholder="Search floor, location, description..." oninput="render()"><select id="statusFilter" onchange="render()"><option value="">All status</option><option>Open</option><option>In Progress</option><option>Closed</option></select><button class="btn secondary" onclick="clearFilters()">Clear</button></div><div class="tablewrap"><table><thead><tr><th>Photo</th><th>ID</th><th>Floor</th><th>Location</th><th>Description</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="snagBody"></tbody></table></div></div></section></div></main>
+<div class="modal" id="reviewModal"><div class="modalbox"><div class="modalhead"><div><h2>WhatsApp Import Review</h2><div class="small" id="reviewSummary"></div></div><button class="btn secondary" onclick="closeReview()">Close</button></div><div class="notice">Each snag entry is one row. The user's actual WhatsApp message is copied to Description. Multiple photos attached to the same message are kept in the same entry as Image 1, Image 2, etc. Floor and Location are not guessed.</div><div id="reviewList"></div><div class="actions"><button class="btn" onclick="importReviewed()">Import Selected</button><button class="btn secondary" onclick="selectAllReview(true)">Select All</button><button class="btn secondary" onclick="selectAllReview(false)">Select None</button></div></div></div>
 <div class="modal" id="imageModal"><div class="modalbox" style="max-width:850px;text-align:center"><div class="modalhead"><h2>Photo</h2><button class="btn secondary" onclick="document.getElementById('imageModal').classList.remove('show')">Close</button></div><img id="bigImage" style="max-width:100%;max-height:75vh;object-fit:contain"></div></div>
-
 <script>
-const KEY="standaloneSnags_v1";
-let snags=loadSnags(), reviewItems=[];
-
-function loadSnags(){try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){return[]}}
-function persist(){localStorage.setItem(KEY,JSON.stringify(snags));render()}
-function nextId(){return "SN-"+new Date().toISOString().slice(0,10).replaceAll("-","")+"-"+String(snags.length+1).padStart(3,"0")}
-function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-function statusClass(s){return s==="Closed"?"closed":s==="In Progress"?"progress":"open"}
-
-document.getElementById("photo").addEventListener("change",e=>{
- const f=e.target.files[0], p=document.getElementById("photoPreview");
- if(!f){p.style.display="none";return}
- const r=new FileReader();r.onload=()=>{document.getElementById("previewImg").src=r.result;p.style.display="block"};r.readAsDataURL(f);
-});
-
+const KEY="standaloneSnags_v2";let snags=loadSnags(),reviewItems=[];
+function loadSnags(){try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){return[]}}function persist(){localStorage.setItem(KEY,JSON.stringify(snags));render()}function nextId(){return "SN-"+new Date().toISOString().slice(0,10).replaceAll("-","")+"-"+String(snags.length+1).padStart(3,"0")}function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
 function fileToDataURL(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
-async function addManual(){
- const floor=document.getElementById("floor").value.trim(), loc=document.getElementById("location").value.trim(), desc=document.getElementById("description").value.trim(), f=document.getElementById("photo").files[0];
- if(!floor||!loc||!desc||!f){alert("Please enter Floor, Location, Description and a photo.");return}
- if(f.size>8*1024*1024){alert("Photo must be 8 MB or smaller.");return}
- snags.unshift({id:nextId(),floor,location:loc,description:desc,type:"",status:"Open",date:new Date().toISOString(),imageName:f.name,imageData:[await fileToDataURL(f)]});
- persist();clearForm();
-}
+document.getElementById("photo").addEventListener("change",e=>{const f=e.target.files[0],p=document.getElementById("photoPreview");if(!f){p.style.display="none";return}const r=new FileReader();r.onload=()=>{document.getElementById("previewImg").src=r.result;p.style.display="block"};r.readAsDataURL(f)});
+async function addManual(){const floor=document.getElementById("floor").value.trim(),loc=document.getElementById("location").value.trim(),desc=document.getElementById("description").value.trim(),f=document.getElementById("photo").files[0];if(!floor||!loc||!desc||!f){alert("Please enter Floor, Location, Description and a photo.");return}if(f.size>8*1024*1024){alert("Photo must be 8 MB or smaller.");return}snags.unshift({id:nextId(),floor,location:loc,description:desc,type:"",status:"Open",date:new Date().toISOString(),imageName:f.name,imageData:[await fileToDataURL(f)]});try{persist();clearForm()}catch(e){alert("Browser storage is full. For a large archive, photos should be moved to IndexedDB/Supabase Storage.")}}
 function clearForm(){["floor","location","description"].forEach(id=>document.getElementById(id).value="");document.getElementById("photo").value="";document.getElementById("photoPreview").style.display="none"}
-function render(){
- const q=document.getElementById("search").value.toLowerCase(), sf=document.getElementById("statusFilter").value;
- const list=snags.filter(x=>(!sf||x.status===sf)&&(!q||[x.id,x.floor,x.location,x.description].join(" ").toLowerCase().includes(q)));
- document.getElementById("snagBody").innerHTML=list.length?list.map(x=>`<tr>
-<td>${(Array.isArray(x.imageData)?x.imageData:(x.imageData?[x.imageData]:[])).length?`<div style="display:flex;gap:4px;flex-wrap:wrap">${(Array.isArray(x.imageData)?x.imageData:[x.imageData]).slice(0,3).map((src,j)=>`<img class="thumb" src="${src}" title="Image ${j+1}" onclick="showImage('${x.id}',${j})">`).join("")}</div>`:"—"}</td>
-<td><b>${escapeHtml(x.id)}</b></td><td>${escapeHtml(x.floor)}</td><td>${escapeHtml(x.location)}</td><td>${escapeHtml(x.description)}</td>
-<td><select onchange="changeStatus('${x.id}',this.value)"><option ${x.status==="Open"?"selected":""}>Open</option><option ${x.status==="In Progress"?"selected":""}>In Progress</option><option ${x.status==="Closed"?"selected":""}>Closed</option></select></td>
-<td>${new Date(x.date).toLocaleDateString()}</td><td><button class="btn danger" onclick="deleteSnag('${x.id}')">Delete</button></td></tr>`).join(""):`<tr><td colspan="8" class="empty">No snag points yet.</td></tr>`;
- document.getElementById("countAll").textContent=snags.length;
- document.getElementById("countOpen").textContent=snags.filter(x=>x.status==="Open").length;
- document.getElementById("countProgress").textContent=snags.filter(x=>x.status==="In Progress").length;
- document.getElementById("countClosed").textContent=snags.filter(x=>x.status==="Closed").length;
-}
-function changeStatus(id,s){const x=snags.find(a=>a.id===id);if(x){x.status=s;persist()}}
-function deleteSnag(id){if(confirm("Delete this snag?")){snags=snags.filter(x=>x.id!==id);persist()}}
-function showImage(id,j=0){const x=snags.find(a=>a.id===id);const arr=Array.isArray(x?.imageData)?x.imageData:(x?.imageData?[x.imageData]:[]);if(arr[j]){document.getElementById("bigImage").src=arr[j];document.getElementById("imageModal").classList.add("show")}}
-function clearFilters(){document.getElementById("search").value="";document.getElementById("statusFilter").value="";render()}
+function render(){const q=document.getElementById("search").value.toLowerCase(),sf=document.getElementById("statusFilter").value;const list=snags.filter(x=>(!sf||x.status===sf)&&(!q||[x.id,x.floor,x.location,x.description].join(" ").toLowerCase().includes(q)));document.getElementById("snagBody").innerHTML=list.length?list.map(x=>{const arr=Array.isArray(x.imageData)?x.imageData:(x.imageData?[x.imageData]:[]);return `<tr><td><div style="display:flex;gap:4px;flex-wrap:wrap">${arr.slice(0,3).map((src,j)=>`<img class="thumb" src="${src}" title="Image ${j+1}" onclick="showImage('${x.id}',${j})">`).join("")||"—"}</div></td><td><b>${escapeHtml(x.id)}</b></td><td>${escapeHtml(x.floor)}</td><td>${escapeHtml(x.location)}</td><td>${escapeHtml(x.description)}</td><td><select onchange="changeStatus('${x.id}',this.value)"><option ${x.status==="Open"?"selected":""}>Open</option><option ${x.status==="In Progress"?"selected":""}>In Progress</option><option ${x.status==="Closed"?"selected":""}>Closed</option></select></td><td>${x.date?new Date(x.date).toLocaleDateString():""}</td><td><button class="btn danger" onclick="deleteSnag('${x.id}')">Delete</button></td></tr>`}).join(""):`<tr><td colspan="8" class="empty">No snag points yet.</td></tr>`;document.getElementById("countAll").textContent=snags.length;document.getElementById("countOpen").textContent=snags.filter(x=>x.status==="Open").length;document.getElementById("countProgress").textContent=snags.filter(x=>x.status==="In Progress").length;document.getElementById("countClosed").textContent=snags.filter(x=>x.status==="Closed").length}
+function changeStatus(id,s){const x=snags.find(a=>a.id===id);if(x){x.status=s;persist()}}function deleteSnag(id){if(confirm("Delete this snag?")){snags=snags.filter(x=>x.id!==id);persist()}}function showImage(id,j=0){const x=snags.find(a=>a.id===id),arr=Array.isArray(x?.imageData)?x.imageData:(x?.imageData?[x.imageData]:[]);if(arr[j]){document.getElementById("bigImage").src=arr[j];document.getElementById("imageModal").classList.add("show")}}function clearFilters(){document.getElementById("search").value="";document.getElementById("statusFilter").value="";render()}
 
-function parseWhatsApp(text){
- const lines=text.replace(/\r/g,"").split("\n"), msgs=[]; let cur=null;
- const patterns=[
-  /^(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}),?\s+(\d{1,2}:\d{2}(?:\s?[AP]M)?)\s*-\s*([^:]+):\s*(.*)$/i,
-  /^\[(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}),?\s+(\d{1,2}:\d{2}(?:\s?[AP]M)?)\]\s*([^:]+):\s*(.*)$/i
- ];
- for(const line of lines){
-   let m=null; for(const r of patterns){m=line.match(r); if(m) break}
-   if(m){
-     cur={date:m[1],time:m[2],sender:m[3].trim(),text:m[4]||"",lines:[]};
-     msgs.push(cur);
-   } else if(cur && line.trim()) {
-     cur.lines.push(line);
-   }
- }
- // WhatsApp export commonly puts a photo filename on the timestamp line and
- // the user's caption on the following line(s). Preserve that caption separately.
- for(const m of msgs) m.caption=m.lines.join("\n").trim();
- return msgs;
-}
-function imageExt(n){return /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(n)}
-function baseName(n){return n.split("/").pop()}
-function attachmentFilename(text){
- const m=String(text||"").match(/(?:^|\s)([A-Za-z0-9._-]+\.(?:jpe?g|png|gif|webp|bmp|heic|heif))\s*\((?:file|media)\s+attached\)/i);
- return m?m[1]:null;
-}
-function isImageMessage(m){return !!attachmentFilename(m.text)}
-function messageCaption(m){
- // The actual user's message is the continuation after "filename (file attached)".
- // Do not copy the generated filename into Description.
- return String(m.caption||"").trim();
-}
-function sameSenderTime(a,b){return a && b && a.sender===b.sender && a.date===b.date && a.time===b.time}
-function buildWhatsAppGroups(msgs,imageNames){
- const nameMap=new Map(imageNames.map(n=>[baseName(n).toLowerCase(),n]));
- const groups=[], pending=[];
- for(const m of msgs){
-   const filename=attachmentFilename(m.text);
-   if(!filename) continue;
-   const actual=nameMap.get(filename.toLowerCase()) || imageNames.find(n=>baseName(n).toLowerCase()===filename.toLowerCase());
-   if(!actual) continue;
+// ---------- Minimal ZIP reader (stored + deflate) ----------
+function u16(a,p){return a[p]|(a[p+1]<<8)}function u32(a,p){return (a[p]|(a[p+1]<<8)|(a[p+2]<<16)|(a[p+3]<<24))>>>0}
+async function unzipEntries(file){const ab=await file.arrayBuffer(),a=new Uint8Array(ab),view=new DataView(ab);let eocd=-1;for(let p=a.length-22;p>=Math.max(0,a.length-65557);p--){if(u32(a,p)===0x06054b50){eocd=p;break}}if(eocd<0)throw new Error("Invalid ZIP: end of central directory not found.");const count=u16(a,eocd+10),cdSize=u32(a,eocd+12),cdOff=u32(a,eocd+16);let p=cdOff,entries=[];for(let i=0;i<count;i++){if(u32(a,p)!==0x02014b50)throw new Error("Invalid ZIP central directory.");const method=u16(a,p+10),compSize=u32(a,p+20),uncompSize=u32(a,p+24),nameLen=u16(a,p+28),extraLen=u16(a,p+30),commentLen=u16(a,p+32),localOff=u32(a,p+42);const name=new TextDecoder().decode(a.slice(p+46,p+46+nameLen));entries.push({name,method,compSize,uncompSize,localOff});p+=46+nameLen+extraLen+commentLen}
+ const out=[];for(const ent of entries){if(ent.name.endsWith("/"))continue;const lp=ent.localOff;if(u32(a,lp)!==0x04034b50)continue;const nl=u16(a,lp+26),el=u16(a,lp+28),start=lp+30+nl+el;const comp=a.slice(start,start+ent.compSize);let data;if(ent.method===0)data=comp;else if(ent.method===8){if(typeof DecompressionStream!=="function")throw new Error("This browser does not support ZIP decompression. Please use current Chrome/Edge/Safari.");const ds=new DecompressionStream("deflate-raw"),stream=new Blob([comp]).stream().pipeThrough(ds);data=new Uint8Array(await new Response(stream).arrayBuffer())}else throw new Error("Unsupported ZIP compression method: "+ent.method);if(ent.uncompSize&&data.length!==ent.uncompSize)console.warn("ZIP size mismatch",ent.name);out.push({name:ent.name,data})}return out}
+function bytesToText(bytes){return new TextDecoder("utf-8").decode(bytes)}function bytesToDataURL(bytes,mime){let binary="",chunk=0x8000;for(let i=0;i<bytes.length;i+=chunk)binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));return `data:${mime};base64,${btoa(binary)}`}
+function parseWhatsApp(text){const lines=text.replace(/\r/g,"").split("\n"),msgs=[];let cur=null;const patterns=[/^(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}),?\s+(\d{1,2}:\d{2}(?:\s?[AP]M)?)\s*-\s*([^:]+):\s*(.*)$/i,/^\[(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}),?\s+(\d{1,2}:\d{2}(?:\s?[AP]M)?)\]\s*([^:]+):\s*(.*)$/i];for(const line of lines){let m=null;for(const r of patterns){m=line.match(r);if(m)break}if(m){cur={date:m[1],time:m[2],sender:m[3].trim(),text:m[4]||"",lines:[]};msgs.push(cur)}else if(cur&&line.trim())cur.lines.push(line)}for(const m of msgs)m.caption=m.lines.join("\n").trim();return msgs}
+function imageExt(n){return /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(n)}function baseName(n){return n.split("/").pop()}function attachmentFilename(text){const m=String(text||"").match(/(?:^|\s)([A-Za-z0-9._-]+\.(?:jpe?g|png|gif|webp|bmp|heic|heif))\s*\((?:file|media)\s+attached\)/i);return m?m[1]:null}function sameSenderTime(a,b){return a&&b&&a.sender===b.sender&&a.date===b.date&&a.time===b.time}
+function buildWhatsAppGroups(msgs,imageNames){const map=new Map(imageNames.map(n=>[baseName(n).toLowerCase(),n])),groups=[],pending=[];for(const m of msgs){const fn=attachmentFilename(m.text);if(!fn)continue;const actual=map.get(fn.toLowerCase());if(!actual)continue;const cap=String(m.caption||"").trim();if(cap){const prior=pending.filter(x=>sameSenderTime(x.msg,m)).map(x=>x.image);for(let i=pending.length-1;i>=0;i--)if(sameSenderTime(pending[i].msg,m))pending.splice(i,1);prior.push(actual);groups.push({msg:m,images:[...new Set(prior)],caption:cap,confidence:prior.length>1?"Grouped multi-image message":"Caption match"})}else pending.push({msg:m,image:actual})}for(const x of pending)groups.push({msg:x.msg,images:[x.image],caption:"",confidence:"Image without caption"});return groups}
+async function loadWhatsAppZip(){const file=document.getElementById("zipFile").files[0];if(!file){alert("Select the WhatsApp ZIP first.");return}try{const entries=await unzipEntries(file),txtEntry=entries.find(x=>/\.txt$/i.test(x.name)&&/(chat|_chat|wa)/i.test(x.name))||entries.find(x=>/\.txt$/i.test(x.name));if(!txtEntry)throw new Error("No chat .txt file found inside the ZIP.");const msgs=parseWhatsApp(bytesToText(txtEntry.data)),imgs=entries.filter(x=>imageExt(x.name)),dataMap={};for(const z of imgs){let mime="image/jpeg";if(/\.png$/i.test(z.name))mime="image/png";else if(/\.gif$/i.test(z.name))mime="image/gif";else if(/\.webp$/i.test(z.name))mime="image/webp";dataMap[z.name]=bytesToDataURL(z.data,mime)}const groups=buildWhatsAppGroups(msgs,imgs.map(x=>x.name)),matched=new Set(groups.flatMap(g=>g.images));for(const z of imgs)if(!matched.has(z.name))groups.push({msg:null,images:[z.name],caption:"",confidence:"Image not matched to a chat message"});reviewItems=groups.map(g=>({selected:true,imageNames:g.images,imageData:g.images.map(n=>dataMap[n]).filter(Boolean),floor:"",location:"",description:g.caption||"",status:"Open",confidence:g.confidence,sender:g.msg?.sender||"",messageDate:g.msg?.date||"",messageTime:g.msg?.time||""}));if(!reviewItems.length){alert("No image files were found in the ZIP.");return}document.getElementById("reviewSummary").textContent=`Found ${imgs.length} image(s), ${msgs.length} message(s), and ${reviewItems.length} snag group(s).`;renderReview();document.getElementById("reviewModal").classList.add("show")}catch(e){console.error(e);alert("Could not read the WhatsApp ZIP: "+e.message)}}
+function renderReview(){document.getElementById("reviewList").innerHTML=reviewItems.map((x,i)=>`<div class="reviewrow"><div style="display:flex;gap:5px;flex-wrap:wrap">${x.imageData.map((src,j)=>`<img src="${src}" title="Image ${j+1}" onclick="showReviewImage(${i},${j})">`).join("")}</div><div><label><input type="checkbox" ${x.selected?"checked":""} onchange="reviewItems[${i}].selected=this.checked"> Select</label><div class="small">${x.imageData.length} image(s)<br>${escapeHtml(x.sender)} ${escapeHtml(x.messageDate)} ${escapeHtml(x.messageTime)}<br>${escapeHtml(x.confidence)}</div></div><div><label>Floor (optional)</label><input value="${escapeHtml(x.floor)}" onchange="reviewItems[${i}].floor=this.value"></div><div><label>Location (optional)</label><input value="${escapeHtml(x.location)}" onchange="reviewItems[${i}].location=this.value"><label>Description — WhatsApp message</label><textarea onchange="reviewItems[${i}].description=this.value">${escapeHtml(x.description)}</textarea></div><div><label>Status</label><select onchange="reviewItems[${i}].status=this.value"><option ${x.status==="Open"?"selected":""}>Open</option><option ${x.status==="In Progress"?"selected":""}>In Progress</option><option ${x.status==="Closed"?"selected":""}>Closed</option></select></div></div>`).join("")}
+function showReviewImage(i,j=0){document.getElementById("bigImage").src=reviewItems[i].imageData[j]||"";document.getElementById("imageModal").classList.add("show")}function selectAllReview(v){reviewItems.forEach(x=>x.selected=v);renderReview()}function closeReview(){document.getElementById("reviewModal").classList.remove("show")}function importReviewed(){const chosen=reviewItems.filter(x=>x.selected);if(!chosen.length){alert("Select at least one snag.");return}chosen.reverse().forEach((x,k)=>snags.unshift({id:nextId(),floor:x.floor||"",location:x.location||"",description:x.description||"",status:x.status||"Open",date:new Date(Date.now()-k).toISOString(),imageNames:x.imageNames||[],imageData:x.imageData||[],imageName:(x.imageNames||[])[0]||"",source:"WhatsApp ZIP"}));try{persist();closeReview();alert(`${chosen.length} snag(s) imported successfully.`)}catch(e){alert("Import exceeds browser storage. Please use a smaller batch or a storage-backed version.")}}
 
-   const caption=messageCaption(m);
-   if(caption){
-     // WhatsApp may export several consecutive image-only messages at the same
-     // timestamp and put the human caption on the final image message.
-     // Group all immediately preceding image-only messages from the same sender/time.
-     const previous=[];
-     while(pending.length){
-       const last=pending[pending.length-1];
-       if(last.msg.sender===m.sender && last.msg.date===m.date && last.msg.time===m.time) previous.unshift(pending.pop());
-       else break;
-     }
-     const images=previous.map(x=>x.image);
-     images.push(actual);
-     groups.push({
-       msg:m,
-       images:[...new Set(images)],
-       caption,
-       confidence:images.length>1?"Grouped multi-image message":"Caption match"
-     });
-   }else{
-     pending.push({msg:m,image:actual});
-   }
- }
- // Any image-only messages that were not followed by a caption become their own
- // entries; importantly, no photo is silently discarded.
- for(const x of pending){
-   groups.push({msg:x.msg,images:[x.image],caption:"",confidence:"Image without caption"});
- }
- return groups;
-}
-function dataURLFromBlob(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(blob)})}
-
-async function loadWhatsAppZip(){
- const file=document.getElementById("zipFile").files[0]; if(!file){alert("Select the WhatsApp ZIP first.");return}
- if(!window.JSZip){alert("ZIP library could not be loaded. Check your internet connection and reload the page.");return}
- try{
-  const zip=await JSZip.loadAsync(file), entries=Object.values(zip.files).filter(x=>!x.dir);
-  const txtEntry=entries.find(x=>/\.txt$/i.test(x.name)&&/(chat|_chat|wa)/i.test(x.name))||entries.find(x=>/\.txt$/i.test(x.name));
-  if(!txtEntry)throw new Error("No chat .txt file found inside the ZIP.");
-  const text=await txtEntry.async("string"), msgs=parseWhatsApp(text), imgs=entries.filter(x=>imageExt(x.name));
-  const imageDataMap={};
-  for(const z of imgs){try{imageDataMap[z.name]=await dataURLFromBlob(await z.async("blob"))}catch(e){}}
-  const imageNames=imgs.map(x=>x.name), groups=buildWhatsAppGroups(msgs,imageNames);
-  const matched=new Set(groups.flatMap(g=>g.images));
-  const unmatched=imgs.filter(x=>!matched.has(x.name));
-  // Safety: never silently lose an image.
-  for(const x of unmatched) groups.push({msg:null,images:[x.name],caption:"",confidence:"Image not matched to a chat message"});
-  reviewItems=groups.map(g=>({
-    selected:true,
-    imageNames:g.images,
-    imageData:g.images.map(n=>imageDataMap[imgs.find(z=>z.name===n)?.name||n]).filter(Boolean),
-    floor:"",
-    location:"",
-    description:g.caption||"",
-    status:"Open",
-    confidence:g.confidence,
-    sender:g.msg?.sender||"",
-    messageDate:g.msg?.date||"",
-    messageTime:g.msg?.time||""
-  }));
-  if(!reviewItems.length){alert("No image files were found in the ZIP.");return}
-  document.getElementById("reviewSummary").textContent=`Found ${imgs.length} image(s), ${msgs.length} chat message(s), and ${reviewItems.length} snag entry group(s). Description contains only the user's actual message text. Floor and Location are not extracted automatically.`;
-  renderReview();document.getElementById("reviewModal").classList.add("show");
- }catch(e){console.error(e);alert("Could not read the WhatsApp ZIP: "+e.message)}
-}
-function renderReview(){
- document.getElementById("reviewList").innerHTML=reviewItems.map((x,i)=>`<div class="reviewrow" style="grid-template-columns:150px 1.1fr 1fr 1.5fr 110px">
- <div style="display:flex;gap:5px;flex-wrap:wrap">${x.imageData.map((src,j)=>`<img src="${src}" title="Image ${j+1}" onclick="showReviewImage(${i},${j})">`).join("")}</div>
- <div><label><input type="checkbox" data-i="${i}" ${x.selected?"checked":""} onchange="reviewItems[${i}].selected=this.checked"> Select</label>
- <div class="small">${x.imageData.length} image(s)<br>${escapeHtml(x.sender)} ${escapeHtml(x.messageDate)} ${escapeHtml(x.messageTime)}<br>${escapeHtml(x.confidence)}</div></div>
- <div><label>Floor (optional)</label><input value="${escapeHtml(x.floor)}" onchange="reviewItems[${i}].floor=this.value"></div>
- <div><label>Location (optional)</label><input value="${escapeHtml(x.location)}" onchange="reviewItems[${i}].location=this.value"><label>Description — WhatsApp message</label><textarea onchange="reviewItems[${i}].description=this.value">${escapeHtml(x.description)}</textarea></div>
- <div><label>Status</label><select onchange="reviewItems[${i}].status=this.value"><option ${x.status==="Open"?"selected":""}>Open</option><option ${x.status==="In Progress"?"selected":""}>In Progress</option><option ${x.status==="Closed"?"selected":""}>Closed</option></select></div>
- </div>`).join("");
-}
-function showReviewImage(i,j=0){document.getElementById("bigImage").src=reviewItems[i].imageData[j]||"";document.getElementById("imageModal").classList.add("show")}
-function selectAllReview(v){reviewItems.forEach(x=>x.selected=v);renderReview()}
-function closeReview(){document.getElementById("reviewModal").classList.remove("show")}
-function importReviewed(){
- const chosen=reviewItems.filter(x=>x.selected); if(!chosen.length){alert("Select at least one snag.");return}
- const now=Date.now();
- chosen.reverse().forEach((x,k)=>snags.unshift({
-   id:nextId(),
-   floor:x.floor||"",
-   location:x.location||"",
-   description:x.description||"",
-   status:x.status||"Open",
-   date:new Date(now-k).toISOString(),
-   imageNames:x.imageNames||[],
-   imageData:x.imageData||[],
-   imageName:(x.imageNames||[])[0]||"",
-   source:"WhatsApp ZIP"
- }));
- try{persist()}catch(e){alert("Import may exceed browser storage limits. For a large archive, use the production storage version.");console.error(e);return}
- closeReview();alert(`${chosen.length} snag(s) imported successfully.`);
-}
-async function exportExcel(){
- if(!snags.length){alert("No snags to export.");return}
- if(!window.ExcelJS){alert("Excel export library could not be loaded. Please check internet and reload.");return}
- try{
-  const wb=new ExcelJS.Workbook();
-  wb.creator="Snag Points";
-  const ws=wb.addWorksheet("Snag Register");
-
-  // Photo-register layout: each snag = one row, each photo = its own cell.
-  ws.columns=[
-   {header:"Sr.No",key:"sr",width:8},
-   {header:"Location",key:"location",width:38},
-   {header:"Snag Point Type",key:"type",width:22},
-   {header:"Description",key:"description",width:42},
-   {header:"Status",key:"status",width:15},
-   {header:"Date",key:"date",width:20},
-   {header:"Image 1",key:"image1",width:23},
-   {header:"Image 2",key:"image2",width:23},
-   {header:"Image 3",key:"image3",width:23},
-   {header:"Image 4",key:"image4",width:23},
-   {header:"Image 5",key:"image5",width:23}
-  ];
-
-  const header=ws.getRow(1);
-  header.height=30;
-  header.font={bold:true,size:12};
-  header.alignment={vertical:"middle",horizontal:"center",wrapText:true};
-  header.eachCell(cell=>{
-    cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFD9E8F5"}};
-    cell.border={top:{style:"thin"},bottom:{style:"thin"},left:{style:"thin"},right:{style:"thin"}};
-  });
-  ws.views=[{state:"frozen",ySplit:1}];
-  ws.autoFilter={from:"A1",to:"K1"};
-
-  function getImages(x){
-    if(Array.isArray(x.imageData)) return x.imageData.filter(Boolean);
-    return x.imageData?[x.imageData]:[];
-  }
-  function getType(x){
-    // Keep a useful type if manually supplied; otherwise use a neutral value.
-    return x.type || x.snagPointType || "";
-  }
-  function parseImage(data){
-    const m=String(data||"").match(/^data:image\/(png|jpe?g);base64,(.+)$/i);
-    if(!m)return null;
-    let ext=m[1].toLowerCase();
-    if(ext==="jpg")ext="jpeg";
-    return {base64:data,extension:ext};
-  }
-
-  snags.slice().reverse().forEach((x,index)=>{
-    const imgs=getImages(x);
-    const row=ws.addRow({
-      sr:index+1,
-      location:x.location||"",
-      type:getType(x),
-      description:x.description||"",
-      status:x.status||"Open",
-      date:x.date?new Date(x.date).toLocaleString():""
-    });
-
-    // Tall row so the image is genuinely visible, like a pasted photograph.
-    row.height=120;
-    for(let c=1;c<=11;c++){
-      const cell=ws.getCell(row.number,c);
-      cell.alignment={vertical:"middle",horizontal:"center",wrapText:true};
-      cell.border={top:{style:"thin"},bottom:{style:"thin"},left:{style:"thin"},right:{style:"thin"}};
-    }
-    ws.getCell(row.number,2).alignment={vertical:"middle",horizontal:"left",wrapText:true};
-    ws.getCell(row.number,4).alignment={vertical:"middle",horizontal:"left",wrapText:true};
-
-    // Image is anchored to the full cell area, with small margins.
-    imgs.slice(0,5).forEach((data,i)=>{
-      const parts=parseImage(data);
-      if(!parts)return;
-      try{
-        const imageId=wb.addImage({base64:parts.base64,extension:parts.extension});
-        const col=6+i; // G=6 zero-based, i.e. Image 1
-        ws.addImage(imageId,{
-          tl:{col,row:row.number-1,offsetX:3,offsetY:3},
-          br:{col:col+1,row:row.number,offsetX:-3,offsetY:-3},
-          editAs:"oneCell"
-        });
-      }catch(err){console.warn("Image embed failed",err)}
-    });
-  });
-
-  // Give image columns a consistent background/border even where no photo exists.
-  for(let r=2;r<=ws.rowCount;r++){
-    for(let c=7;c<=11;c++){
-      const cell=ws.getCell(r,c);
-      cell.alignment={vertical:"middle",horizontal:"center"};
-      cell.border={top:{style:"thin"},bottom:{style:"thin"},left:{style:"thin"},right:{style:"thin"}};
-    }
-  }
-
-  const buffer=await wb.xlsx.writeBuffer();
-  const blob=new Blob([buffer],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download="snag-register-photo-register.xlsx";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),3000);
- }catch(e){
-  console.error(e);
-  alert("Excel export failed: "+e.message);
- }
-}
+// ---------- Minimal XLSX writer with real embedded images ----------
+function escXml(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;")}
+function dataURLBinary(data){const m=String(data||"").match(/^data:image\/(png|jpe?g);base64,(.+)$/i);if(!m)return null;let b64=m[2],bin=atob(b64),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);let ext=m[1].toLowerCase();if(ext==="jpg")ext="jpeg";return {bytes,ext}}
+function crc32(bytes){let table=crc32.table;if(!table){table=crc32.table=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xedb88320^(c>>>1)):(c>>>1);table[n]=c>>>0}}let c=0xffffffff;for(let i=0;i<bytes.length;i++)c=table[(c^bytes[i])&255]^(c>>>8);return (c^0xffffffff)>>>0}
+function le16(n){return new Uint8Array([n&255,(n>>>8)&255])}function le32(n){return new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255])}
+function concatBytes(parts){let len=parts.reduce((n,a)=>n+a.length,0),out=new Uint8Array(len),p=0;for(const a of parts){out.set(a,p);p+=a.length}return out}
+function zipStore(files){const locals=[],centrals=[];let offset=0;for(const f of files){const name=new TextEncoder().encode(f.name),data=f.data,crc=crc32(data);const local=concatBytes([new Uint8Array([0x50,0x4b,0x03,0x04]),le16(20),le16(0),le16(0),le16(0),le16(0),le32(crc),le32(data.length),le32(data.length),le16(name.length),le16(0),name,data]);locals.push(local);const central=concatBytes([new Uint8Array([0x50,0x4b,0x01,0x02]),le16(20),le16(20),le16(0),le16(0),le16(0),le16(0),le32(crc),le32(data.length),le32(data.length),le16(name.length),le16(0),le16(0),le16(0),le16(0),le32(0),le32(offset),name]);centrals.push(central);offset+=local.length}const cd=concatBytes(centrals),body=concatBytes(locals);const eocd=concatBytes([new Uint8Array([0x50,0x4b,0x05,0x06]),le16(0),le16(0),le16(files.length),le16(files.length),le32(cd.length),le32(body.length),le16(0)]);return concatBytes([body,cd,eocd])}
+function textBytes(s){return new TextEncoder().encode(s)}
+function makeStyles(){return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9E8F5"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="1" borderId="0"/></cellXfs></styleSheet>`}
+function makeSheet(rows,imageCount){let xml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><dimension ref="A1:K${rows.length+1}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols><col min="1" max="1" width="8"/><col min="2" max="2" width="38"/><col min="3" max="3" width="22"/><col min="4" max="4" width="42"/><col min="5" max="5" width="15"/><col min="6" max="6" width="20"/>`;for(let c=7;c<=11;c++)xml+=`<col min="${c}" max="${c}" width="23"/>`;xml+=`</cols><sheetData>`;const headers=["Sr.No","Location","Snag Point Type","Description","Status","Date","Image 1","Image 2","Image 3","Image 4","Image 5"];xml+=`<row r="1" ht="30" customHeight="1">`;headers.forEach((h,i)=>xml+=`<c r="${String.fromCharCode(65+i)}1" s="1" t="inlineStr"><is><t>${escXml(h)}</t></is></c>`);xml+=`</row>`;rows.forEach((x,ri)=>{let r=ri+2;xml+=`<row r="${r}" ht="120" customHeight="1">`;const vals=[ri+1,x.location||"",x.type||x.snagPointType||"",x.description||"",x.status||"Open",x.date?new Date(x.date).toLocaleString():""];vals.forEach((v,i)=>{const col=String.fromCharCode(65+i);xml+=`<c r="${col}${r}" t="inlineStr"><is><t xml:space="preserve">${escXml(v)}</t></is></c>`});for(let i=0;i<5;i++){const col=String.fromCharCode(71+i);xml+=`<c r="${col}${r}"/>`}xml+=`</row>`});return xml+`</sheetData><pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/><drawing r:id="rId1"/></worksheet>`}
+function makeDrawing(imageInfos){let xml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">`;imageInfos.forEach((im,i)=>{const col=im.col,row=im.row;xml+=`<xdr:twoCellAnchor editAs="oneCell"><xdr:from><xdr:col>${col}</xdr:col><xdr:colOff>76200</xdr:colOff><xdr:row>${row}</xdr:row><xdr:rowOff>76200</xdr:rowOff></xdr:from><xdr:to><xdr:col>${col+1}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${row+1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${i+1}" name="Picture ${i+1}"/><xdr:cNvPicPr/></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="rId${i+1}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:twoCellAnchor>`});return xml+`</xdr:wsDr>`}
+function makeDrawingRels(count){let x=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`;for(let i=1;i<=count;i++)x+=`<Relationship Id="rId${i}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image${i}.${imageExportExt[i-1]}"/>`;return x+`</Relationships>`}
+let imageExportExt=[];
+function makeWorkbookFiles(){const rows=snags.slice().reverse(),files=[],imageInfos=[];imageExportExt=[];let imageNo=0;rows.forEach((x,ri)=>{const imgs=Array.isArray(x.imageData)?x.imageData:(x.imageData?[x.imageData]:[]);imgs.slice(0,5).forEach((d,i)=>{const parts=dataURLBinary(d);if(!parts)return;imageNo++;imageExportExt.push(parts.ext);imageInfos.push({col:6+i,row:ri+1});files.push({name:`xl/media/image${imageNo}.${parts.ext}`,data:parts.bytes})})});const contentTypes=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="png" ContentType="image/png"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`;files.unshift({name:"[Content_Types].xml",data:textBytes(contentTypes)});files.push({name:"_rels/.rels",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`)});files.push({name:"docProps/core.xml",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:creator>Snag Points</dc:creator><cp:lastModifiedBy>Snag Points</cp:lastModifiedBy><dcterms:created xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="dcterms:W3CDTF">${new Date().toISOString()}</dcterms:created></cp:coreProperties>`)});files.push({name:"docProps/app.xml",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Snag Points</Application></Properties>`)});files.push({name:"xl/workbook.xml",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Snag Register" sheetId="1" r:id="rId1"/></sheets></workbook>`)});files.push({name:"xl/_rels/workbook.xml.rels",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`)});files.push({name:"xl/styles.xml",data:textBytes(makeStyles())});files.push({name:"xl/worksheets/sheet1.xml",data:textBytes(makeSheet(rows,imageNo))});files.push({name:"xl/worksheets/_rels/sheet1.xml.rels",data:textBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>`)});files.push({name:"xl/drawings/drawing1.xml",data:textBytes(makeDrawing(imageInfos))});files.push({name:"xl/drawings/_rels/drawing1.xml.rels",data:textBytes(makeDrawingRels(imageInfos.length))});return files}
+async function exportExcel(){if(!snags.length){alert("No snags to export.");return}try{const files=makeWorkbookFiles(),xlsx=zipStore(files),blob=new Blob([xlsx],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="snag-register-photo-register.xlsx";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);alert(`Excel exported. ${imageExportExt.length} photo(s) were embedded in the XLSX file.`)}catch(e){console.error(e);alert("Excel export failed: "+e.message)}}
 render();
-</script>
-</body>
-</html>
+</script></body></html>
